@@ -787,6 +787,86 @@ The correct operations decision is: do not approve a sandbox deployment yet. Con
 
 This review does not claim live AWS/device evidence. It does not authorize sandbox deployment or resource creation. It documents the exact conditions required for approval of the first sandbox demo.
 
+## Security re-check after Builder remediation PR #11, Verifier PR #12, and Reviewer re-check
+
+Reviewer: Security role re-check of the repository state after the Builder remediation, the independent Verifier re-check, and the targeted Reviewer re-check.
+
+### Scope
+
+This review re-evaluates the earlier security findings from PR #9 and the operational findings from PR #10 against the repository state on `main` after PR #11 and PR #12. The scope is intentionally limited to repository evidence and the required control narrative for the next sandbox-planning phase. It does not claim live AWS/device evidence and it does not authorize cloud creation or mutation.
+
+### Security findings from PR #9: current disposition
+
+1. `OFFLINE` was treated as a device-authored value and therefore a spoofing vector.
+   - Current disposition: resolved in repository contract and docs.
+   - Evidence: [src/business_app/telemetry.py](src/business_app/telemetry.py) rejects `operating_state == "OFFLINE"` and the architecture/spec files now describe `OFFLINE` as server-derived, not device-authored.
+
+2. `device_id` in the payload was effectively acting as a trust anchor.
+   - Current disposition: resolved in repository contract and docs.
+   - Evidence: `validate_telemetry()` requires an authoritative `authenticated_device_id` and rejects mismatches before state mutation.
+
+3. A device could misrepresent or spoof identity and thereby corrupt asset attribution.
+   - Current disposition: resolved at the domain-validation layer.
+   - Evidence: the payload `device_id` is treated as telemetry data, not as a trust decision point, and the mismatch path is explicitly rejected.
+
+4. Server-side and device-side semantics for connectivity and loss-of-signal were not separated cleanly enough for review.
+   - Current disposition: resolved in the architecture and contract docs.
+   - Evidence: [docs/architecture.md](docs/architecture.md), [docs/acceptance-criteria.md](docs/acceptance-criteria.md), and [specs/work-request.md](specs/work-request.md) define connectivity/offline status as server-derived and not acceptably self-reported by the device.
+
+### Operations findings from PR #10: current disposition
+
+1. Replay and stale-message protection were required as server-side controls.
+   - Current disposition: consistent with the local contract and the operational review requirements.
+   - Evidence: [src/business_app/telemetry.py](src/business_app/telemetry.py) enforces a bounded timestamp skew and monotonic sequence behavior before state mutation.
+
+2. The telemetry contract needed explicit semantics for reconnect and quiet/offline periods.
+   - Current disposition: documented as a server-side concern, not a device-reported state.
+   - Evidence: the architecture and verification notes state that offline state is derived from telemetry absence or heartbeat timeout, not from self-reported device payloads.
+
+3. Local evidence must not be mistaken for live AWS/device proof.
+   - Current disposition: resolved in acceptance mapping and repo documentation.
+   - Evidence: [specs/acceptance.json](specs/acceptance.json) explicitly tags AC-101, AC-103, and AC-104 as `live-demo-required` while AC-102 and AC-105 remain local-contract evidence.
+
+### Remaining blockers that are still outside repository proof
+
+The repository is now consistent on the local trust and validation story. The remaining blockers are not code defects; they are unproven live-AWS controls that must be shown in the ordered sandbox plan and human-approved deployment evidence.
+
+- X.509 device certificate lifecycle and rotation policy are still design-time requirements, not repository proof.
+- AWS IoT Thing / certificate binding is still a live AWS configuration requirement.
+- Narrow MQTT topic authorization and least-privilege policy design remain to be concretely represented in the sandbox infrastructure plan.
+- Authoritative identity propagation from certificate principal to Lambda and the downstream state write path still needs explicit design evidence before cloud creation.
+- Least-privilege permissions for Lambda, state-store access, and TwinMaker access remain required control artifacts, not inferred from repository tests.
+- Log redaction, retention limits, bounded retries, and no-permission-broadening behavior remain design-time controls that must be specified in the AWS plan.
+- Teardown and revocation of certificates, policies, and sandbox resources remain required operational controls.
+
+### Exact security controls required in the upcoming AWS sandbox plan
+
+These controls should be represented concretely in the sandbox infrastructure plan and reviewed before any AWS mutation:
+
+- X.509 device certificate lifecycle: issuance, rotation, revocation, and expiration handling.
+- AWS IoT Thing/certificate binding: explicit mapping from cert principal to a unique Thing and a device registry record.
+- Narrow MQTT topic authorization: publish permissions limited to the exact device topic(s) and deny wildcard broadening.
+- Authoritative identity propagation: pass the verified certificate principal or Thing identity into the Lambda validation function before state mutation.
+- Least-privilege Lambda IAM: read only the required MQTT payload, then write only the normalized asset state to the permitted state store.
+- Least-privilege state-store permissions: narrow write / read scopes to the exact device asset record and no shared account-wide broad access.
+- Least-privilege TwinMaker permissions: scope updates to the specific entity / property names used by the prototype.
+- Log redaction: scrub secrets, raw certificates, bearer tokens, and any raw payload data unless explicitly needed for a controlled diagnostic snapshot.
+- Retention limits: define data and log lifetime for the sandbox and require teardown or archival when the demo ends.
+- Bounded retries: avoid retry storms or permission expansion loops when validation fails.
+- No permission broadening fallback: a failed auth or validation path must not silently widen permissions or fallback to wildcard rules.
+- Teardown and revocation: remove device certs, Thing bindings, IoT policy entries, Lambda resources, state-store writes, and any TwinMaker resources after the exercise or on explicit cleanup.
+
+### Security verdict
+
+The repository is ready for the next review milestone: a concrete AWS sandbox planning review that includes the above controls. It is not ready for AWS resource creation or live-device deployment, because the remaining proof items are live cloud and device controls outside the repository boundary.
+
+This re-check therefore concludes:
+
+- the earlier security blockers are resolved at the repo trust/validation layer;
+- the remaining risk is not a code-level defect but an unproven live AWS design and deployment path;
+- the sandbox plan must include the concrete controls above before any AWS mutation is approved;
+- the repository is ready to proceed to AWS sandbox planning only under the explicit no-deployment, no-live-evidence rule.
+
 ## Verifier review of Builder remediation PR #11
 
 Reviewer: fresh independent verifier review of Builder remediation PR #11 after it was merged onto `origin/main`.
