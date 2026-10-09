@@ -285,12 +285,12 @@ The current `main` branch is green at the repository gate level, but it is not y
 
 ### Important findings
 
-4. The adapter boundaries are sensible, but they are still abstract contracts rather than live integration proof
+1. The adapter boundaries are sensible, but they are still abstract contracts rather than live integration proof
    - [src/business_app/adapters.py](src/business_app/adapters.py) defines clean protocols for `IoTCoreAdapter`, `LatestStateStore`, and `TwinMakerAdapter`; this is a good separation of concerns for a prototype.
    - However, the project currently contains no implementation of those adapters against real AWS services, so the boundaries are architectural guidance, not evidence of a working integration.
    - Recommendation: keep the boundary design, but explicitly label the adapter layer as a future implementation target until the relevant AWS path has been demoed and recorded.
 
-5. Maintainability is acceptable, but several tests are stronger as local guards than as proof of the production claim
+2. Maintainability is acceptable, but several tests are stronger as local guards than as proof of the production claim
    - [tests/test_digital_twin_contract.py](tests/test_digital_twin_contract.py) validates the domain contract well.
    - The repo still does not have a test that demonstrates live publish latency, real device motion, or AWS-visible state. That is a gap in the evidence story, not necessarily a code defect.
    - Recommendation: separate "local contract tests" from "live demo evidence" so the repo makes a clear distinction between deterministic local validation and actual cloud/device proof.
@@ -307,42 +307,3 @@ The current `main` branch is green at the repository gate level, but it is not y
 This is a good local contract prototype with clean validation logic, but it is not yet a demonstrated IoT-to-digital-twin system. The code is reviewable and the engineering gates are green; the remaining work is evidence collection, contract clarification, and explicit separation of real proof from local assumptions.
 
 No AWS resources were provisioned, no sensitive credentials were added, and no live AWS/device evidence was claimed beyond what is locally executable in the repository.
-- `OPERATING_STATE_NORMAL NORMAL`
-- `OPERATING_STATE_WARN WARN`
-- `OPERATING_STATE_ALERT ALERT`
-- `NAN_REJECTED ValueError gyro_x contains an invalid numeric value`
-- `INF_REJECTED ValueError accel_x contains an invalid numeric value`
-- `NEGATIVE_SEQUENCE_REJECTED ValueError sequence must be a non-negative integer`
-
-### 4. Findings on current `main`
-
-1. The current code accepts stale timestamps outside a ±10s skew window. This contradicts the contract in `specs/work-request.md` and the architecture assumptions in `docs/architecture.md`.
-2. The current code accepts duplicate or replayed sequence values. This contradicts the documented requirement that per-device `sequence` values must be strictly increasing or the message is rejected or ignored.
-3. The operating-state derivation logic itself is correct for the local domain model and matches the expected `NORMAL`/`WARN`/`ALERT` mapping.
-4. Malformed numeric values and negative sequence numbers are rejected, which is good local validation. The gap is that the runtime policy does not enforce bounded timestamp skew or replay protection.
-5. No live physical-device or AWS Cloud evidence exists for AC-101, AC-103, or AC-104.
-
-### 5. Acceptance criteria assessment for current `main`
-
-| Acceptance ID | Status | Current observed evidence |
-| --- | --- | --- |
-| AC-101 | Not proven | No physical M5Stack Core2 publish over authenticated MQTT/TLS to AWS IoT Core was observed. |
-| AC-102 | Partially proven locally | Malformed numeric values and invalid negative sequence numbers are rejected, but stale timestamps and duplicate sequence values are accepted, so the full contract is not enforced. |
-| AC-103 | Not proven | No live TwinMaker-visible state update or 10-second latency measurement was observed. |
-| AC-104 | Partially proven locally | `derive_operating_state` behaves as expected in local logic tests, but there is no live motion event captured from a physical device and no cloud-visible before/after state. |
-| AC-105 | Proven locally | The repository credential scan passes and no secret patterns were detected in tracked files. |
-
-### 6. Residual risk and required evidence
-
-Before claiming the prototype is demonstrated, the project still needs:
-
-- a real device publish over authenticated TLS to AWS IoT Core;
-- a live Lambda validation path that rejects stale timestamps and replayed sequence values;
-- a live TwinMaker-visible asset update with a measured latency under 10 seconds;
-- a real motion event that changes the derived operating parameter in the cloud-visible state.
-
-No AWS resources were provisioned, and no live device or cloud evidence was fabricated.
-
-### 7. Verdict
-
-The current `main` branch is a green repository with a credible local domain model, but it does not yet satisfy the stricter end-to-end architecture requirements for a live digital-twin prototype. The local implementation is internally consistent, while the system-level acceptance criteria remain unproven without live device and AWS observations.
