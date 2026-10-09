@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "criteria": [
+    {
+      "id": "AC-001",
+      "spec": "specs/work-request.md",
+      "tests": [
+        "tests/test_service.py::test_calculate_result",
+        "tests/test_service.py::test_boundaries"
+      ]
+    },
+    {
+      "id": "AC-002",
+      "spec": "specs/work-request.md",
+      "tests": [
+        "tests/test_service.py::test_invalid_identifiers"
+      ]
+    },
+    {
+      "id": "AC-003",
+      "spec": "specs/work-request.md",
+      "tests": [
+        "tests/test_service.py::test_invalid_values"
+      ]
+    },
+    {
+      "id": "AC-004",
+      "spec": "specs/work-request.md",
+      "tests": [
+        "tests/test_service.py::test_invalid_types"
+      ]
+    },
+    {
+      "id": "AC-005",
+      "spec": "specs/work-request.md",
+      "tests": [
+        "tests/test_service.py::test_deterministic_without_mutation"
+      ]
+    }
+  ]
+}

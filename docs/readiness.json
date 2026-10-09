@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "stage": "prototype",
+  "checks": {
+    "stakeholder_validation": {
+      "status": "pending",
+      "owner": "",
+      "evidence": ""
+    },
+    "security_review": {
+      "status": "pending",
+      "owner": "",
+      "evidence": ""
+    },
+    "slo_and_alerts": {
+      "status": "pending",
+      "owner": "",
+      "evidence": ""
+    },
+    "rollback_drill": {
+      "status": "pending",
+      "owner": "",
+      "evidence": ""
+    },
+    "recovery_drill": {
+      "status": "pending",
+      "owner": "",
+      "evidence": ""
+    },
+    "capacity_and_cost": {
+      "status": "pending",
+      "owner": "",
+      "evidence": ""
+    },
+    "release_approval": {
+      "status": "pending",
+      "owner": "",
+      "evidence": ""
+    }
+  }
+}
