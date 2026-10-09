@@ -2,39 +2,38 @@
   "schema_version": 1,
   "criteria": [
     {
-      "id": "AC-001",
+      "id": "AC-101",
       "spec": "specs/work-request.md",
       "tests": [
-        "tests/test_service.py::test_calculate_result",
-        "tests/test_service.py::test_boundaries"
+        "tests/test_digital_twin_contract.py::test_valid_telemetry_payload_is_accepted"
       ]
     },
     {
-      "id": "AC-002",
+      "id": "AC-102",
       "spec": "specs/work-request.md",
       "tests": [
-        "tests/test_service.py::test_invalid_identifiers"
+        "tests/test_digital_twin_contract.py::test_invalid_telemetry_payload_is_rejected"
       ]
     },
     {
-      "id": "AC-003",
+      "id": "AC-103",
       "spec": "specs/work-request.md",
       "tests": [
-        "tests/test_service.py::test_invalid_values"
+        "tests/test_digital_twin_contract.py::test_latency_requirement_is_documented"
       ]
     },
     {
-      "id": "AC-004",
+      "id": "AC-104",
       "spec": "specs/work-request.md",
       "tests": [
-        "tests/test_service.py::test_invalid_types"
+        "tests/test_digital_twin_contract.py::test_motion_changes_condition_state"
       ]
     },
     {
-      "id": "AC-005",
+      "id": "AC-105",
       "spec": "specs/work-request.md",
       "tests": [
-        "tests/test_service.py::test_deterministic_without_mutation"
+        "tests/test_digital_twin_contract.py::test_repo_contains_no_committed_credentials"
       ]
     }
   ]

@@ -1,30 +1,61 @@
-# Work request contract (worked example)
+# Digital twin telemetry contract
 
-Status: example, not a production business spec.
-Owner: template maintainer. Stakeholder: engineer checking the starter.
+Status: architecture proposal for the first M5Stack Core2 AWS prototype. Not production-deployed.
+Owner: technical owner. Stakeholder: engineering lead evaluating remote equipment condition.
 
 ## Outcome
 
-Demonstrate a pure domain boundary whose accepted input produces twice its value without external side effects. The measurable template outcome is repeatable checks and rejected invalid inputs.
+Demonstrate that a real M5Stack Core2 for AWS can publish authenticated IMU telemetry to AWS IoT Core and that the latest asset condition is visible through a minimal digital-twin representation in a way that is measurable and reviewable.
 
 ## Contract
 
-`WorkRequest(request_id: str, value: int)` accepts a nonblank string identifier of at most 128 characters and an integer from 0 through 1,000,000. Boolean values are rejected even though Python treats bool as an int. Invalid types raise TypeError; invalid bounds raise ValueError. `calculate_result` returns exactly `value * 2` and does not mutate input or perform I/O.
+The device publishes a JSON telemetry payload on an authenticated MQTT topic. The payload must satisfy the following contract before any cloud-side state update occurs:
+
+```json
+{
+  "device_id": "core2-aws-001",
+  "timestamp": "2026-10-08T19:45:00Z",
+  "accel_x": 0.03,
+  "accel_y": -0.02,
+  "accel_z": 1.01,
+  "gyro_x": 0.4,
+  "gyro_y": 0.1,
+  "gyro_z": -0.2,
+  "operating_state": "NORMAL",
+  "sequence": 42
+}
+```
+
+Rules:
+
+- `device_id` is a non-empty string that matches the device certificate identity or a trusted device registry alias.
+- `timestamp` must be RFC3339 UTC and within a bounded clock-skew window (target ±10s) at the point of validation.
+- `accel_*` and `gyro_*` values must be finite numbers and within sensor-safe ranges for the M5Stack Core2 AWS IMU.
+- `operating_state` must be one of `NORMAL`, `WARN`, `ALERT`, or `OFFLINE` and is derived by deterministic business logic.
+- `sequence` must be strictly increasing for a given device, or the message is considered duplicate/replay and is rejected or ignored.
+
+The prototype does not permit arbitrary free-form telemetry; malformed event shapes are rejected before any state is written.
 
 ## Acceptance IDs
 
-- AC-001: accepted input returns the exact doubled value, including boundary values.
-- AC-002: blank or oversized identifiers are rejected.
-- AC-003: negative or oversized values are rejected.
-- AC-004: invalid types, including boolean values, are rejected.
-- AC-005: repeated computation is deterministic and leaves input unchanged.
-
-Map each ID to executable pytest node IDs in `acceptance.json`. Passing mappings prove test execution, not that assertions are sufficient; review remains required.
+- AC-101: the physical device publishes a valid telemetry payload over authenticated TLS to AWS IoT Core.
+- AC-102: malformed or out-of-range data is rejected before it mutates digital-twin state.
+- AC-103: valid telemetry appears in the TwinMaker-visible asset state within 10 seconds under normal development conditions.
+- AC-104: a physical motion event changes the derived operating condition and the TwinMaker-visible value.
+- AC-105: no device credentials, private keys, or AWS secrets are stored in the repository.
 
 ## Failure and security boundaries
 
-No network, persistence, authentication, retries, or distributed side effects exist in this example. Do not infer distributed idempotency from deterministic pure computation. Add explicit contracts and integration tests when those boundaries are introduced.
+- Device auth and cloud auth remain separate trust boundaries enforced by certs and IoT policies.
+- Malformed or unauthorized payloads do not mutate state.
+- Replayed or duplicate telemetry is blocked by sequence/timestamp validation and never treated as independent state transitions.
+- Offline network conditions do not overwrite the last known good state.
+- Permission expansion is prohibited without a reviewed, explicit change to policy scope.
 
 ## Non-goals
 
-A production application, API, deployment, or business-specific ROI claim.
+- multi-device fleet management
+- long-term predictive monitoring
+- a production-ready 3D scene or full industrial asset model
+- automated remediation or broad rollout
+- reliance on SiteWise for the first proof unless a later requirement justifies it
