@@ -1,7 +1,32 @@
 # Acceptance and quality criteria
 
-Business acceptance lives in `specs/*.md` and `specs/acceptance.json`. The included five IDs are worked examples; replace them with real project behavior. The gate requires unique IDs, existing specs containing each ID, and collected tests for every mapping. Pytest must then pass.
+This project is a prototype for validating a physical M5Stack Core2 for AWS asset and its cloud digital-twin state. The acceptance criteria below focus on the security, data validity, and observability required to justify continuing beyond the first experiment.
 
-Engineering gates: format, lint, strict types, behavior tests, minimum 90% branch coverage of application code, secret scan, Bandit, and live dependency audit. The secret scanner detects selected credential patterns; it is not a complete data-loss prevention system.
+## Project acceptance IDs
 
-Production acceptance is separate: `docs/readiness.json` must reference substantive repository evidence and named owners. Human review must establish that the evidence is true, current, and sufficient. Automated checks cannot certify a release.
+- AC-101: The physical device publishes a valid IMU telemetry event over authenticated MQTT/TLS to AWS IoT Core.
+- AC-102: Malformed or out-of-range telemetry is rejected before it mutates the digital-twin state.
+- AC-103: A valid update reaches the TwinMaker-visible asset state within 10 seconds under normal development conditions.
+- AC-104: A physical motion event changes the derived operating condition and the TwinMaker-visible condition value.
+- AC-105: No device credentials, private keys, or AWS secrets are present in the repository or Git history.
+
+## Objective evidence for each criterion
+
+- AC-101 is supported by a device-side test contract and a review of the certificate-policy path.
+- AC-102 is validated by strict schema and range checks in the telemetry contract tests.
+- AC-103 is validated by measuring the latency between message publish and cloud-visible state update in a controlled demo.
+- AC-104 requires a real device movement exercise with a captured before/after value in the TwinMaker state.
+- AC-105 is enforced by the repository secret scan and a human review of the Git history for credentials.
+
+## Engineering gate expectations
+
+This project follows the repository engineering gates: format, lint, strict types, behavior tests, and secret scanning. Production readiness is intentionally separate and cannot be claimed from this architecture pass alone.
+
+## Non-goals for this prototype
+
+- Fleet-scale analytics and management
+- Advanced predictive maintenance
+- A production-ready industrial scene
+- Automatic remediation or broad operational rollout
+
+These items remain future work after the first end-to-end proof is demonstrated to a stakeholder.
