@@ -1,76 +1,321 @@
-# Agent Business Solution Template v2
+# IoT Digital Twin
 
-Turn an ambiguous business problem into a verified software solution using AI coding agents and human engineering judgment.
+An AI-first AWS IoT digital-twin prototype built around a physical **M5Stack Core2 for AWS** device.
 
-Inspired by business-facing engineering principles: clarify outcomes, prototype with stakeholders, anticipate edge cases, and own secure, operable delivery.
+The project is designed to prove a narrow end-to-end idea:
 
-## Start here
+```text
+Physical M5Stack Core2
+        |
+        | IMU telemetry over MQTT/TLS
+        v
+AWS IoT Core
+        |
+        | validation / normalization
+        v
+AWS application boundary
+        |
+        v
+AWS IoT TwinMaker
+        |
+        v
+Human-visible digital-twin state
+```
 
-1. Click **Use this template** on GitHub and create your project.
-2. Fill in `PROJECT_BRIEF.md`: user, current process, measurable benefit, constraints, and assumptions.
-3. Replace the worked example in `specs/work-request.md` and `specs/acceptance.json` with your behavior contract and test mappings.
-4. Ask **Architect** to challenge assumptions and propose the smallest useful experiment.
-5. Ask **Builder** for one vertical slice. Demo it to the stakeholder; record learning in `docs/prototype-review.md`.
-6. Ask **Verifier**, **Reviewer**, **Security**, and **Operations** to evaluate the evidence in separate review passes.
-7. Harden the validated idea using `docs/prototype-to-production.md`. Complete `docs/readiness.json` before claiming production readiness.
+The immediate goal is not to build a production IoT platform. It is to demonstrate that movement of a real physical device can securely produce telemetry, pass deterministic validation, and become observable as digital-twin state.
 
-AI accelerates research, implementation, and review. Passing deterministic checks and observed behavior establish evidence; an agent's confidence does not.
+## Project status
 
-## Setup and commands
+The repository is currently in the prototype-validation stage.
 
-Python 3.12, Git, and network access for bootstrap and vulnerability audit are required.
+```text
+Project brief         complete
+Architecture          complete
+Domain implementation complete
+Local verification    complete / being refined
+Security review       pending
+Operations review     pending
+AWS sandbox deploy    not yet approved
+Physical device demo  not yet completed
+Production readiness  no
+```
+
+No live AWS deployment or production-readiness claim should be inferred from passing repository tests.
+
+## Acceptance criteria
+
+The project tracks five primary acceptance criteria:
+
+| ID | Requirement | Current status |
+| --- | --- | --- |
+| AC-101 | Physical Core2 publishes authenticated MQTT/TLS telemetry to AWS IoT Core | Pending live device/AWS evidence |
+| AC-102 | Invalid, stale, or replayed telemetry cannot mutate digital-twin state | Locally testable |
+| AC-103 | Valid telemetry becomes TwinMaker-visible within 10 seconds | Pending live AWS evidence |
+| AC-104 | Physical motion causes an observable digital-twin condition change | Local logic implemented; live demo pending |
+| AC-105 | No device credentials, certificates, or AWS secrets are committed | Repository controls in place |
+
+See `specs/work-request.md`, `specs/acceptance.json`, and `docs/verification.md` for the detailed evidence contract.
+
+## Architecture
+
+The original hypothesis was:
+
+```text
+IoT Core -> IoT SiteWise -> TwinMaker
+```
+
+The Architect review deliberately reduced the first experiment.
+
+For a single low-rate physical device, SiteWise and a polished 3D scene were judged unnecessary for the first proof. The current prototype favors the smallest credible vertical slice:
+
+```text
+M5Stack Core2
+      |
+      | MQTT/TLS + X.509
+      v
+AWS IoT Core
+      |
+      v
+validation / state normalization
+      |
+      v
+latest accepted asset state
+      |
+      v
+TwinMaker-visible entity
+```
+
+AWS IoT SiteWise remains a possible later addition if historical time-series or richer asset-model semantics become important.
+
+See `docs/architecture.md` and `docs/decision-log.md`.
+
+## Telemetry model
+
+The prototype uses a bounded IMU telemetry event similar to:
+
+```json
+{
+  "device_id": "core2-aws-001",
+  "timestamp": "2026-10-08T19:45:00Z",
+  "accel_x": 0.03,
+  "accel_y": -0.02,
+  "accel_z": 1.01,
+  "gyro_x": 0.4,
+  "gyro_y": 0.1,
+  "gyro_z": -0.2,
+  "operating_state": "NORMAL",
+  "sequence": 42
+}
+```
+
+The domain layer validates telemetry before external state may be changed.
+
+Current validation includes:
+
+- required fields
+- numeric validity
+- deterministic operating-state derivation
+- timestamp bounds
+- monotonic sequence / replay protection
+- normalized asset-state generation
+
+The core domain logic is kept independent of AWS I/O so it can be tested deterministically.
+
+## AI-first engineering workflow
+
+This repository was created from `agent-business-solution-template` and is also an experiment in using specialized AI engineering roles with explicit human control.
+
+The project has progressed through:
+
+```text
+PROJECT_BRIEF
+      |
+      v
+Architect
+      |
+      v
+acceptance contract + architecture
+      |
+      v
+Builder
+      |
+      v
+implementation + tests
+      |
+      v
+Verifier
+      |
+      v
+Reviewer / Security / Operations
+      |
+      v
+human deployment decision
+```
+
+Agent definitions live under:
+
+```text
+.github/agents/
+├── architect.agent.md
+├── builder.agent.md
+├── verifier.agent.md
+├── reviewer.agent.md
+├── security.agent.md
+└── operations.agent.md
+```
+
+`AGENTS.md` defines the authority model shared by those roles.
+
+Agents may inspect, propose, implement, test, and produce evidence.
+
+They do **not** gain authority to deploy cloud infrastructure, broaden permissions, expose credentials, or make consequential production changes merely because a test or review passes.
+
+## Human control boundary
+
+The project intentionally separates engineering evidence from deployment authority.
+
+Before live AWS resources are created, a human must review:
+
+- AWS account and region
+- resources to be created
+- IAM permissions
+- device certificate and IoT policy scope
+- recurring cost
+- data-retention implications
+- rollback / deletion behavior
+- expected blast radius
+
+A passing agent review is evidence for a decision. It is not the decision itself.
+
+## Repository map
+
+```text
+PROJECT_BRIEF.md
+    Business problem, scope, constraints, and target outcome
+
+AGENTS.md
+    Agent authority and engineering rules
+
+.github/agents/
+    Specialized Architect, Builder, Verifier, Reviewer,
+    Security, and Operations roles
+
+docs/architecture.md
+    Current system design and component responsibilities
+
+docs/decision-log.md
+    Architectural decisions and tradeoffs
+
+docs/verification.md
+    Executed verification evidence and remaining gaps
+
+docs/prototype-review.md
+    Prototype hypothesis, findings, and stakeholder evidence
+
+specs/work-request.md
+    Human-readable behavioral contract
+
+specs/acceptance.json
+    Acceptance IDs mapped to executable evidence
+
+src/business_app/
+    Pure application/domain logic and AWS adapter boundaries
+
+tests/
+    Behavioral and contract tests
+
+infra/
+    Infrastructure-related project assets
+
+scripts/
+    Deterministic repository quality and readiness gates
+```
+
+## Local development
+
+Python 3.12 is used for the repository tooling and prototype domain layer.
+
+Bootstrap:
 
 ```bash
 ./scripts/bootstrap.sh
-./scripts/check.sh
-.venv/bin/python scripts/gates.py --production
 ```
 
-Windows PowerShell:
+Run the full engineering gate:
 
-```powershell
-py -3.12 -m venv .venv
-.venv\Scripts\python -m pip install --require-hashes -r requirements-dev.lock
-.venv\Scripts\python -m pip install --no-deps --no-build-isolation -e .
-.venv\Scripts\python scripts/check.py
-.venv\Scripts\python scripts/gates.py --production
+```bash
+make check
 ```
 
-| Command | Evidence / gate |
-| --- | --- |
-| `make check` | Spec traceability, secret scan, format, lint, types, tests, coverage, Bandit, dependency audit |
-| `make test` | Behavioral regression tests |
-| `make production` | All checks plus owner, security, SLO, rollback, recovery, and stakeholder evidence |
-| `make lock` | Deliberate dependency refresh; review and rerun gates |
+Run behavioral tests:
 
-CI runs the same `scripts/check.py` command on pushes and pull requests. Versions and dependency hashes are locked; GitHub Actions are pinned to immutable commits. The vulnerability advisory database is live and can change results or be unavailable: the audit fails closed. CI records reports in `artifacts/`.
+```bash
+make test
+```
 
-**The template passes engineering checks but intentionally fails production readiness.** Replace the sample business logic and supply real evidence; do not mark the starter production-ready.
+Production-readiness checks are intentionally separate:
 
-## Repository guide
+```bash
+make production
+```
 
-- `AGENTS.md`: authority, workflow, and evidence requirements.
-- `specs/`: human-readable contract and machine-readable acceptance/test traceability.
-- `.github/agents/`: Architect, Builder, Verifier, Reviewer, Security, Operations.
-- `.github/workflows/quality.yml`: repeatable checks; no deployment credentials.
-- `docs/`: architecture, threat model, prototype feedback, verification, readiness, and recovery.
-- `scripts/`: cross-platform checks and fail-closed readiness validation.
-- `src/`, `tests/`: small pure-Python example and gate regression tests.
+Passing `make check` does **not** mean the physical device or AWS digital-twin path has been demonstrated.
 
-## Prototype to production
+## Evidence over confidence
 
-Discovery → experiment → stakeholder feedback → spec revision → hardening → verification → release decision. See `docs/prototype-to-production.md` for exit criteria and `docs/verification.md` for evidence requirements.
+The core engineering principle of this repository is:
 
-Prototype shortcuts must be recorded with owner, risk, and expiry. Use synthetic data. External side effects require bounded retries, timeouts, idempotency, and recovery tests where relevant. A human owns the business outcome and release decision.
+> AI can propose and implement quickly, but deterministic checks and observed system behavior establish evidence.
 
-## GitHub setup for projects created from this template
+That distinction matters especially for this project because several requirements cannot be proven locally.
 
-Keep `main` as default. Configure a branch ruleset requiring the **Quality gates** status check and review; workflow files alone do not enforce branch protection. Add a protected deployment environment with a human release approver when you introduce deployment. Never give untrusted pull requests production secrets. This template does not provision infrastructure or automatically deploy.
+A complete prototype requires observed evidence from:
 
-## Dependency maintenance
+```text
+physical M5Stack
+      ↓
+authenticated AWS IoT connection
+      ↓
+accepted telemetry
+      ↓
+cloud processing
+      ↓
+TwinMaker-visible state
+```
 
-Edit `requirements-dev.in`, then run `make lock` in the development environment. Commit the generated hash lock with the change. Application runtime dependencies must also be added to `requirements-runtime.in`, reflected in `pyproject.toml`, locked, and audited. An empty runtime file is correct for this standard-library-only example.
+Until that path has actually been exercised, it remains an architectural hypothesis backed by local software evidence rather than a demonstrated digital twin.
 
-## Upgrade notes
+## What is deliberately out of scope
 
-v2 adds executable specs, immutable tool inputs, evidence-oriented agents, CI, security gates, production readiness, and feedback-driven promotion. Existing domain code stays small. Hooks remain opt-in; see `.github/hooks/README.md`.
+The first prototype does not attempt to provide:
+
+- fleet-scale device management
+- predictive maintenance or ML
+- Kafka/Kinesis streaming architecture
+- polished industrial 3D scenes
+- production alerting or on-call operations
+- OTA firmware management
+- automatic remediation
+- production availability guarantees
+
+Those capabilities should only be introduced when evidence from the first experiment justifies the additional complexity.
+
+## Next milestone
+
+The next major milestone is the first controlled sandbox demonstration:
+
+```text
+move the physical M5Stack
+        ↓
+IMU telemetry changes
+        ↓
+AWS receives authenticated telemetry
+        ↓
+validation accepts the event
+        ↓
+digital-twin state changes
+        ↓
+human observes the change
+```
+
+That experiment will provide the first real system-level evidence for AC-101, AC-103, and AC-104.
