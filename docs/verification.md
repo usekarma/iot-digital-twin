@@ -258,6 +258,55 @@ Observed result:
 - `VALID_PAYLOAD Telemetry(...)`
 - `STALE_TIMESTAMP_ACCEPTED Telemetry(...)`
 - `DUPLICATE_SEQUENCE_ACCEPTED Telemetry(...)`
+
+## Independent reviewer findings and recommendations
+
+### Reviewer summary
+
+The current `main` branch is green at the repository gate level, but it is not yet a demonstrated end-to-end prototype. The implementation is deterministic and well-structured for a local contract slice, while the real AWS/device evidence required by the architecture remains unobserved and should remain explicitly described as future work rather than treated as complete.
+
+### Blocking findings
+
+1. Contract mismatch for `OFFLINE` state
+   - In [src/business_app/telemetry.py](src/business_app/telemetry.py), `VALID_OPERATIONAL_STATES` includes `OFFLINE`, but `derive_operating_state()` never returns it.
+   - `validate_telemetry()` further enforces `operating_state == derive_operating_state(...)`, so an offline signal is impossible to represent under the current domain contract.
+   - This is a concrete defect in the implementation-to-spec story: the allowed enum says `OFFLINE` is valid, but the deterministic derivation path rejects it.
+   - Recommendation: either define a real `OFFLINE` derivation rule (for example, when the device misses a heartbeat or when the message is explicitly marked unavailable), or remove `OFFLINE` from the allowed enum until the contract is clarified.
+
+2. Acceptance criteria are being used as if they were evidence
+   - In [specs/acceptance.json](specs/acceptance.json), AC-101 maps to a local payload acceptance test, and AC-103 maps to a test that only asserts the latency requirement is documented in [docs/architecture.md](docs/architecture.md).
+   - That is not live-device or live-AWS evidence; it is spec coverage, not proof of actual publish or TwinMaker observability.
+   - Recommendation: keep the acceptance mapping, but mark the real cloud/device criteria as "pending live proof" unless a real device and AWS path have been exercised in a controlled demo.
+
+3. No real device or AWS proof exists for the prototype outcome
+   - The architecture in [docs/architecture.md](docs/architecture.md) is a reasonable minimal proposal, but the repository still does not contain observed evidence for: authenticated MQTT/TLS publish to AWS IoT Core, Lambda validation and normalization, or a TwinMaker-visible state change under 10 seconds.
+   - The present code and tests do not replace those proofs.
+   - Recommendation: before Security and Operations review, attach a human-reviewed demo record with the exact AWS account, region, resource list, device identity, and timing measurements; otherwise the prototype remains unsupported by real evidence.
+
+### Important findings
+
+4. The adapter boundaries are sensible, but they are still abstract contracts rather than live integration proof
+   - [src/business_app/adapters.py](src/business_app/adapters.py) defines clean protocols for `IoTCoreAdapter`, `LatestStateStore`, and `TwinMakerAdapter`; this is a good separation of concerns for a prototype.
+   - However, the project currently contains no implementation of those adapters against real AWS services, so the boundaries are architectural guidance, not evidence of a working integration.
+   - Recommendation: keep the boundary design, but explicitly label the adapter layer as a future implementation target until the relevant AWS path has been demoed and recorded.
+
+5. Maintainability is acceptable, but several tests are stronger as local guards than as proof of the production claim
+   - [tests/test_digital_twin_contract.py](tests/test_digital_twin_contract.py) validates the domain contract well.
+   - The repo still does not have a test that demonstrates live publish latency, real device motion, or AWS-visible state. That is a gap in the evidence story, not necessarily a code defect.
+   - Recommendation: separate "local contract tests" from "live demo evidence" so the repo makes a clear distinction between deterministic local validation and actual cloud/device proof.
+
+### Recommendation before Security and Operations review
+
+- Clarify the intended meaning of `OFFLINE` in the telemetry contract before any wider approval.
+- Keep SiteWise deferred until the minimal path is proven; the architecture decision in [docs/architecture.md](docs/architecture.md) remains sound.
+- Preserve the local validation tests, but explicitly label them as local-only evidence and do not use them to claim AC-101 or AC-103.
+- Require a recorded stakeholder demo with actual device and AWS timestamps before any release or operational approvals are considered.
+
+### Reviewer verdict
+
+This is a good local contract prototype with clean validation logic, but it is not yet a demonstrated IoT-to-digital-twin system. The code is reviewable and the engineering gates are green; the remaining work is evidence collection, contract clarification, and explicit separation of real proof from local assumptions.
+
+No AWS resources were provisioned, no sensitive credentials were added, and no live AWS/device evidence was claimed beyond what is locally executable in the repository.
 - `OPERATING_STATE_NORMAL NORMAL`
 - `OPERATING_STATE_WARN WARN`
 - `OPERATING_STATE_ALERT ALERT`
