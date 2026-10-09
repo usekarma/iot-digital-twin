@@ -285,12 +285,12 @@ The current `main` branch is green at the repository gate level, but it is not y
 
 ### Important findings
 
-4. The adapter boundaries are sensible, but they are still abstract contracts rather than live integration proof
+1. The adapter boundaries are sensible, but they are still abstract contracts rather than live integration proof
    - [src/business_app/adapters.py](src/business_app/adapters.py) defines clean protocols for `IoTCoreAdapter`, `LatestStateStore`, and `TwinMakerAdapter`; this is a good separation of concerns for a prototype.
    - However, the project currently contains no implementation of those adapters against real AWS services, so the boundaries are architectural guidance, not evidence of a working integration.
    - Recommendation: keep the boundary design, but explicitly label the adapter layer as a future implementation target until the relevant AWS path has been demoed and recorded.
 
-5. Maintainability is acceptable, but several tests are stronger as local guards than as proof of the production claim
+2. Maintainability is acceptable, but several tests are stronger as local guards than as proof of the production claim
    - [tests/test_digital_twin_contract.py](tests/test_digital_twin_contract.py) validates the domain contract well.
    - The repo still does not have a test that demonstrates live publish latency, real device motion, or AWS-visible state. That is a gap in the evidence story, not necessarily a code defect.
    - Recommendation: separate "local contract tests" from "live demo evidence" so the repo makes a clear distinction between deterministic local validation and actual cloud/device proof.
@@ -307,6 +307,7 @@ The current `main` branch is green at the repository gate level, but it is not y
 This is a good local contract prototype with clean validation logic, but it is not yet a demonstrated IoT-to-digital-twin system. The code is reviewable and the engineering gates are green; the remaining work is evidence collection, contract clarification, and explicit separation of real proof from local assumptions.
 
 No AWS resources were provisioned, no sensitive credentials were added, and no live AWS/device evidence was claimed beyond what is locally executable in the repository.
+
 - `OPERATING_STATE_NORMAL NORMAL`
 - `OPERATING_STATE_WARN WARN`
 - `OPERATING_STATE_ALERT ALERT`
@@ -785,3 +786,110 @@ The current `main` branch is a solid local proof-of-contract and a credible star
 The correct operations decision is: do not approve a sandbox deployment yet. Continue only with a documented, human-reviewed runbook, explicit IAM and certificate design, measured live evidence, and a teardown procedure that can guarantee no AWS resources are left running unintentionally.
 
 This review does not claim live AWS/device evidence. It does not authorize sandbox deployment or resource creation. It documents the exact conditions required for approval of the first sandbox demo.
+
+## Verifier review of Builder remediation PR #11
+
+Reviewer: fresh independent verifier review of Builder remediation PR #11 after it was merged onto `origin/main`.
+
+### Exact commit reviewed
+
+- Builder remediation commit: `6f459f9` (`Fix offline and identity trust contract`)
+- Main merge commit containing PR #11: `2225f6b` (`Merge pull request #11 from usekarma/builder/remediation-pre-sandbox`)
+
+This review verifies the repository state on `origin/main` after the PR merged, without claiming any live AWS or device observation.
+
+### Exact checks run
+
+Executed commands:
+
+```bash
+cd /home/ted/dev/iot-digital-twin && git pull --ff-only origin main
+cd /home/ted/dev/iot-digital-twin && . .venv/bin/activate && python scripts/check.py
+cd /home/ted/dev/iot-digital-twin && . .venv/bin/activate && python - <<'PY'
+from datetime import UTC, datetime, timedelta
+from business_app.telemetry import validate_telemetry
+
+base_now = datetime(2026,10,8,12,0,0,tzinfo=UTC)
+base = {
+    'device_id':'core2-aws-001',
+    'timestamp': base_now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'accel_x': 0.03,
+    'accel_y': -0.02,
+    'accel_z': 1.01,
+    'gyro_x': 0.4,
+    'gyro_y': 0.1,
+    'gyro_z': -0.2,
+    'operating_state':'NORMAL',
+    'sequence':42,
+}
+
+for name, fn in [
+    ('VALID_ACCEPTED', lambda: validate_telemetry(base, now=base_now)),
+    ('OFFLINE_REJECTED', lambda: validate_telemetry({**base, 'operating_state':'OFFLINE'}, now=base_now)),
+    ('MISMATCH_REJECTED', lambda: validate_telemetry(base, now=base_now, authenticated_device_id='core2-aws-999')),
+    ('STALE_REJECTED', lambda: validate_telemetry({**base, 'timestamp': (base_now - timedelta(seconds=11)).strftime('%Y-%m-%dT%H:%M:%SZ')}, now=base_now)),
+    ('REPLAY_REJECTED', lambda: validate_telemetry(base, now=base_now, last_sequence=42)),
+    ('NEXT_ACCEPTED', lambda: validate_telemetry({**base, 'sequence':43}, now=base_now, last_sequence=42)),
+]:
+    try:
+        result = fn()
+        print(name, 'ACCEPTED', result)
+    except Exception as exc:
+        print(name, 'REJECTED', type(exc).__name__, exc)
+PY
+```
+
+Observed results:
+
+- `python scripts/check.py` exited successfully.
+- 45 tests passed.
+- coverage reached 93.85%.
+- Ruff, mypy, Bandit, and pip-audit all passed.
+- targeted runtime verification output included:
+  - `VALID_ACCEPTED ACCEPTED Telemetry(...)`
+  - `OFFLINE_REJECTED REJECTED ValueError OFFLINE is server-derived and cannot be self-reported by the device`
+  - `MISMATCH_REJECTED REJECTED ValueError device_id does not match the authenticated device identity`
+  - `STALE_REJECTED REJECTED ValueError timestamp is outside the permitted clock-skew window`
+  - `REPLAY_REJECTED REJECTED ValueError sequence is not greater than the last accepted value`
+  - `NEXT_ACCEPTED ACCEPTED Telemetry(...)`
+
+### Observed behavior
+
+The repository behavior on the merged `main` branch is consistent with the Builder remediation claims for the local contract layer:
+
+- device-authored `OFFLINE` is rejected
+- connectivity/offline status is documented and enforced as server-derived, not device-authored
+- `device_id` in the payload is treated as data and not as a trust anchor when an authoritative identity is supplied
+- a mismatch between payload `device_id` and the authenticated device identity is rejected
+- stale timestamps remain rejected
+- replayed or non-monotonic sequence values remain rejected
+- valid telemetry still succeeds when the payload matches the authenticated device and the operating-state derivation remains consistent
+
+This is local behavior only; it is not AWS/device proof. It does not establish a live sandbox deployment or a real TwinMaker update.
+
+### Prior findings resolved by PR #11
+
+The Builder remediation resolves the following specific issues from the earlier review cycle:
+
+- Reviewer PR #8: `OFFLINE` contract mismatch is resolved by removing device-authored offline semantics from the valid device contract and documenting the server-derived status model.
+- Reviewer PR #8: local evidence is no longer implied to be live AWS/device proof; the acceptance mapping explicitly distinguishes local evidence from live-demo-required evidence.
+- Security PR #9: payload `device_id` is no longer treated as the trust anchor when an authoritative device identity is supplied; mismatch rejection is enforced.
+- Security PR #9: the repo now clearly separates device operating condition from server-derived connectivity/offline semantics.
+- Operations PR #10: stale/replay and offline semantics are explicitly documented as server-side controls, which matches the local validation and the operational review requirements.
+
+### Acceptance criteria still dependent on live AWS/device evidence
+
+The following acceptance criteria remain explicitly unproven and require a human-approved live AWS/device demonstration before any claim is made:
+
+- AC-101: physical device publishes valid IMU telemetry over authenticated TLS to AWS IoT Core
+- AC-103: valid telemetry reaches TwinMaker-visible state within 10 seconds under normal development conditions
+- AC-104: a live physical motion event changes the cloud-visible asset condition; the local derivation logic is not enough to prove this
+
+The remaining local-only evidence is:
+
+- AC-102: malformed or out-of-range telemetry is rejected before state mutation in local contract validation
+- AC-105: repository secret scanning and credential hygiene remain local repository evidence only
+
+### Verdict
+
+PR #11 resolves the local contract and evidence-contract issues it claimed to resolve. It does not prove a live device/AWS digital-twin path, and it should not be interpreted as deployment or sandbox approval. The repository is now consistent with the intended local contract boundaries, but live AWS/device observations remain required for the end-to-end prototype claims.
