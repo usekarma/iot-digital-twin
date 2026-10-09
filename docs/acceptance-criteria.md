@@ -12,10 +12,10 @@ This project is a prototype for validating a physical M5Stack Core2 for AWS asse
 
 ## Objective evidence for each criterion
 
-- AC-101 is supported by a device-side test contract and a review of the certificate-policy path.
+- AC-101 is supported only by a reviewed device-side certificate policy and a real device/AWS observation; local contract tests do not count as live evidence.
 - AC-102 is validated by strict schema and range checks in the telemetry contract tests.
-- AC-103 is validated by measuring the latency between message publish and cloud-visible state update in a controlled demo.
-- AC-104 requires a real device movement exercise with a captured before/after value in the TwinMaker state.
+- AC-103 is validated only by measuring the latency between message publish and cloud-visible state update in a controlled live demo; a documented latency requirement is not sufficient proof.
+- AC-104 requires a real device movement exercise with a captured before/after value in the TwinMaker state; local motion-state derivation is not cloud evidence.
 - AC-105 is enforced by the repository secret scan and a human review of the Git history for credentials.
 
 ## Engineering gate expectations

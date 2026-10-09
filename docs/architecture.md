@@ -89,11 +89,12 @@ The device contract should be documented as a strict JSON schema. The first prot
 
 Required rules:
 
-- `device_id`: non-empty string; must match the device certificate identity or a trusted device registry mapping.
+- `device_id`: non-empty string; it is telemetry data, not the trust anchor. The authoritative identity comes from the certificate principal, the AWS IoT Thing, or a trusted registry mapping. A mismatch between the authenticated identity and the payload `device_id` is rejected before state mutation.
 - `timestamp`: RFC3339 UTC timestamp; `now` must be within a bounded skew window (for example ±10s) or the message is rejected.
 - `accel_*` and `gyro_*`: finite floating-point numbers and must fit the sensor range for the M5Stack Core2 AWS IMU; the prototype rejects NaN and infinity values.
-- `operating_state`: enum of `NORMAL`, `WARN`, `ALERT`, `OFFLINE` and must be derived by deterministic domain logic rather than accepted as arbitrary free-form text.
+- `operating_state`: enum of `NORMAL`, `WARN`, `ALERT` and must be derived by deterministic motion logic rather than accepted as arbitrary free-form text. `OFFLINE` is server-derived from missing telemetry / heartbeat timeout and is not a valid device-authored value.
 - `sequence`: strictly increasing per device; duplicates or replayed values are rejected or treated as idempotent updates based on the dedupe policy.
+- `connectivity_state`: not accepted from device telemetry; server-side logic derives connectivity state after the heartbeat timeout or other connectivity checks.
 
 The payload size should be deliberately bounded (for example < 1 KB) to safeguard the prototype and reduce surprise cost.
 
