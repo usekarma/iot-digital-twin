@@ -346,3 +346,170 @@ No AWS resources were provisioned, and no live device or cloud evidence was fabr
 ### 7. Verdict
 
 The current `main` branch is a green repository with a credible local domain model, but it does not yet satisfy the stricter end-to-end architecture requirements for a live digital-twin prototype. The local implementation is internally consistent, while the system-level acceptance criteria remain unproven without live device and AWS observations.
+
+## Independent security review for current `main`
+
+Reviewer: fresh security review of the current `origin/main` state. This review is limited to repository evidence and architecture intent; no AWS resources were provisioned and no live AWS/device evidence was claimed.
+
+### Security scope and assessment basis
+
+This project is a prototype, but the planned real path is still a security boundary: a physical device publishes telemetry through AWS IoT Core, a Lambda validates and normalizes it, a state store holds the latest accepted condition, and TwinMaker exposes that state to a user.
+
+The repository verifies local contract logic and code quality, but it does not contain executed evidence for the live device-to-AWS path. Therefore, this review focuses on the trust boundaries that must hold before sandbox deployment and on whether the current architecture is safe enough to proceed with explicit human approval.
+
+### Findings
+
+#### 1. Device identity must be bound to the X.509 principal, not only to `device_id`
+
+The domain contract in [src/business_app/telemetry.py](src/business_app/telemetry.py) relies on `device_id` as a payload field. That is useful for telemetry semantics, but it is not an identity control by itself.
+
+For a real M5Stack device, the secure identity should be:
+
+- the AWS IoT Thing (or equivalent certificate principal);
+- the device certificate and private key kept on the device in a secure element, TPM-backed store, or equivalent locked provisioning path;
+- the MQTT client identity and certificate identity bound to the same physical device identity;
+- the payload `device_id` validated against the trusted device registry or Thing name rather than trusted solely because it appears in the message body.
+
+If `device_id` is accepted as a free-form value from the device payload, a compromised or spoofed client can claim another device name and pollute state attribution. The architecture should treat `device_id` as a data attribute, not as the trust anchor.
+
+Required control: keep payload `device_id` consistent with a trusted device registry or Thing principal and reject mismatches before state mutation.
+
+#### 2. X.509 certificates and private keys should not live in the repository or application code
+
+The repository correctly treats credentials as out of scope, and the secret scan is static evidence that tracked files do not contain obvious credential patterns. That is necessary but not sufficient.
+
+For real deployment, private keys and device certificates must live:
+
+- on the device secure storage or provisioning module;
+- in an access-controlled secret manager or secure provisioning workflow only for the deployment pipeline;
+- nowhere in Git, CI configuration, Terraform variables, environment files, or application package artifacts.
+
+The project should explicitly document that certificate rotation, revocation, and renewal are required before any sandbox deployment and that no private key material is stored in the repository history or generated as part of build/test automation.
+
+#### 3. AWS IoT Core policy scope must be tightly bounded
+
+The architecture in [docs/architecture.md](docs/architecture.md) describes an IoT Core boundary but does not yet specify the actual IoT policy scope. That should be treated as a required design control before sandbox deployment.
+
+The MQTT policy should be least privilege:
+
+- allow only the specific device Thing or certificate to publish to the allowed topic(s);
+- deny all other topics and actions by default;
+- avoid wildcard topic subscriptions or broad publish permissions;
+- constrain allowed actions to the minimum required for telemetry publishing;
+- use device-specific principals and topic-level allowlists rather than a shared broad certificate policy.
+
+A broad `iot:*` or topic wildcard policy would significantly increase the blast radius if a single device or certificate is compromised.
+
+#### 4. Lambda and state-store permissions need explicit least-privilege boundaries
+
+The architecture proposes a Lambda validation/normalization path and a latest-state store, but the repository does not define the resulting IAM policies. That is a security gap, not a repository defect, but it is a blocker to approval.
+
+Required least-privilege design:
+
+- Lambda should have permission only to the specific topic rule trigger or required input source, not broad IoT or AWS service access;
+- Lambda logs should write only to a dedicated log group and never emit raw payloads at debug-level in production;
+- the state store should allow only the specific table or key-space that holds latest asset state;
+- TwinMaker access should be explicitly limited to the specific asset/entity or property path;
+- no wildcard resource ARN patterns should be used unless there is a documented and reviewed need.
+
+The implementation should also prevent a failure condition from broadening permissions via retries or automatic retries of a higher-privilege path. Retries should be bounded and idempotent; permission grants should remain static and reviewed.
+
+#### 5. Replay and stale-message protection is necessary, but not sufficient without outbound trust checks
+
+The local validation logic in [src/business_app/telemetry.py](src/business_app/telemetry.py) correctly rejects stale timestamps and lower/replayed sequences when those values are supplied appropriately. That is good hygiene.
+
+However, the security review must also consider the live AWS path:
+
+- the IoT rule or Lambda should reject messages that arrive with a timestamp too far in the future or too far in the past;
+- the state store should be write-guarded against stale or replayed payloads by using monotonic per-device sequence checks and timestamp validation;
+- it should not trust the payload `device_id` alone as proof of freshness or as the sole dedupe key;
+- any replay protection should be enforced on the server side, not just in local tests.
+
+This is good security control design and is consistent with the reviewer finding that the current repo proves local validation, not live cloud-side enforcement.
+
+#### 6. The `OFFLINE` state is a contract and security concern, not just a domain issue
+
+The reviewer finding remains valid: [docs/architecture.md](docs/architecture.md) and [specs/work-request.md](specs/work-request.md) allow `OFFLINE`, but [src/business_app/telemetry.py](src/business_app/telemetry.py) does not derive or accept it with the same deterministic logic as the other states.
+
+Security concern: if `OFFLINE` becomes accepted as a client-authored state, a compromised device or malicious actor could falsely mark an asset as offline, suppress real motion state, or create confusion during incident triage.
+
+Required control: define `OFFLINE` as a server-side derived state based on heartbeat timeout or missing telemetry, not as an arbitrary value that a device can self-select in a message payload. If `OFFLINE` is not yet implemented, remove it from the contract until the control is explicitly designed.
+
+#### 7. Malformed payload handling must fail closed and avoid side effects
+
+The local validation code handles malformed numeric values and negative or replayed sequences, which is good. For the live path, the same rule must hold at the Lambda or IoT rule boundary:
+
+- invalid JSON must be rejected before state mutation;
+- malformed fields must not be normalized into a state update;
+- the system should retain the last known good state rather than writing partial or corrupt values;
+- no action should be taken by failing open or by broadening the write path after validation errors.
+
+The guardrail is right, but it must be repeated in the actual AWS processing layer, not only in the Python domain logic.
+
+#### 8. Logging can leak sensitive operational data if payloads or device IDs are emitted verbatim
+
+Telemetry payloads include device identifiers, timestamps, and motion values. That is not high-value personal data by itself, but it may still reveal operational state and physical movement patterns of equipment.
+
+Required logging controls:
+
+- log only redacted or normalized identifiers, not full payload bodies;
+- avoid logging raw IMU values or certificate material;
+- redact device IDs in debug logs unless they are actively needed for troubleshooting;
+- include a consistent correlation ID rather than full payload content;
+- define retention and access controls for log data because it could become operationally sensitive.
+
+#### 9. Authentication and authorization failure behavior must not broaden the trust boundary
+
+The architecture explicitly notes that failed authorization should not be retried by expanding permissions. This is the correct posture.
+
+Operationally, the same rule should apply to:
+
+- certificate rotation failures;
+- IoT policy update attempts;
+- Lambda execution failures that are retried with broader permissions or uncontrolled fallback paths;
+- state-store write failures where a retry loop could produce duplicate or out-of-order writes.
+
+Retries should be bounded, idempotent, and logged without revealing secrets or cert details. Azure-style or AWS-style fallback mechanisms must not silently widen the scope of access.
+
+#### 10. The planned AWS architecture introduces a manageable but real attack surface
+
+The main attack surfaces for the proposed prototype are:
+
+- the device certificate and provisioning process;
+- the AWS IoT Core policy and topic authorizations;
+- the validation Lambda runtime and environment variables;
+- the latest-state store and any linked indexes or keys;
+- the TwinMaker asset representation and its access path.
+
+This is still a small surface area, which is consistent with the project’s single-device prototype intent. However, the attack surface becomes materially larger if the project introduces wildcard topics, broad resource-level IAM, or any storage path that retains device data without a documented retention policy or access model.
+
+### Additional controls required before sandbox deployment
+
+The project should not advance to a sandbox deployment without the following controls being explicitly reviewed and recorded:
+
+- device x.509 certificate issuance and rotation plan;
+- device private key storage model and lifecycle;
+- AWS IoT Core topic allowlist and Thing or certificate mapping;
+- least-privilege IAM for Lambda, state store, and TwinMaker resource access;
+- a documented secret management path with no repo or config secrets;
+- stale timestamp and replay protection enforced in the live AWS pipeline;
+- explicit log redaction and retention policy;
+- a defined `OFFLINE` state model and/or removal of the unsupported enum value;
+- a data-retention and deletion policy for recent state and any retained telemetry snapshots;
+- a human review that confirms no permission broadening is implicit in retry or fallback logic.
+
+### Residual risks and blockers
+
+The main residual risks are not code quality issues; they are architecture and operational controls that remain unproven in the repo:
+
+- the live certificate and identity binding model is not yet exercised;
+- the real AWS IoT permission set is not yet reviewed;
+- the Lambda/state-store/TwinMaker trust boundary is not yet designed in least privilege;
+- no sandbox deployment has been performed, so no live device or AWS evidence exists;
+- the `OFFLINE` state contract remains ambiguous and should be clarified before a wider review.
+
+### Security verdict
+
+The current repository is a clean local prototype with sensible validation logic and good discipline around secret scanning. The architecture is small and reviewable, and the proposed AWS path is a reasonable prototype boundary. However, the live security controls for device identity, certificate handling, AWS IoT authorization, and least-privilege IAM remain unproven and must be reviewed in a human-authored deployment design before the project proceeds to any sandbox environment.
+
+This review does not claim live AWS/platform evidence. It does not authorize a sandbox deployment, and it does not broaden permissions or invent certificate material or AWS secrets.
