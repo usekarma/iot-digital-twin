@@ -63,6 +63,19 @@ def test_validate_telemetry_rejects_non_monotonic_sequence() -> None:
         validate_telemetry(payload, last_sequence=42)
 
 
+def test_validate_telemetry_rejects_device_self_asserted_offline() -> None:
+    with pytest.raises(ValueError, match="OFFLINE|operating_state"):
+        validate_telemetry({**VALID_PAYLOAD, "operating_state": "OFFLINE"})
+
+
+def test_validate_telemetry_rejects_mismatched_authenticated_device_identity() -> None:
+    with pytest.raises(ValueError, match="authenticated|device identity|mismatch"):
+        validate_telemetry(
+            VALID_PAYLOAD,
+            authenticated_device_id="core2-aws-999",
+        )
+
+
 @pytest.mark.parametrize(
     ("payload", "error_message"),
     [

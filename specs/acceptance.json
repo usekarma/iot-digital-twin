@@ -4,37 +4,47 @@
     {
       "id": "AC-101",
       "spec": "specs/work-request.md",
+      "evidence_type": "live-demo-required",
       "tests": [
         "tests/test_digital_twin_contract.py::test_valid_telemetry_payload_is_accepted"
-      ]
+      ],
+      "notes": "Local contract tests are not evidence of a real device publish; live AWS/device observation remains required."
     },
     {
       "id": "AC-102",
       "spec": "specs/work-request.md",
+      "evidence_type": "local-contract",
       "tests": [
         "tests/test_digital_twin_contract.py::test_invalid_telemetry_payload_is_rejected"
-      ]
+      ],
+      "notes": "This proves the local validation contract only."
     },
     {
       "id": "AC-103",
       "spec": "specs/work-request.md",
+      "evidence_type": "live-demo-required",
       "tests": [
         "tests/test_digital_twin_contract.py::test_latency_requirement_is_documented"
-      ]
+      ],
+      "notes": "Documented latency is a requirement, not proof of live TwinMaker observability."
     },
     {
       "id": "AC-104",
       "spec": "specs/work-request.md",
+      "evidence_type": "live-demo-required",
       "tests": [
         "tests/test_digital_twin_contract.py::test_motion_changes_condition_state"
-      ]
+      ],
+      "notes": "Local motion derivation is not proof of a live device motion change in the cloud view."
     },
     {
       "id": "AC-105",
       "spec": "specs/work-request.md",
+      "evidence_type": "local-contract",
       "tests": [
         "tests/test_digital_twin_contract.py::test_repo_contains_no_committed_credentials"
-      ]
+      ],
+      "notes": "Repository secret scanning proves local repository hygiene only."
     }
   ]
 }

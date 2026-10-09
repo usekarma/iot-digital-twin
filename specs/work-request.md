@@ -28,11 +28,12 @@ The device publishes a JSON telemetry payload on an authenticated MQTT topic. Th
 
 Rules:
 
-- `device_id` is a non-empty string that matches the device certificate identity or a trusted device registry alias.
+- `device_id` is telemetry data only. The authoritative identity is the authenticated certificate principal, AWS IoT Thing identity, or a trusted registry mapping. A mismatch between the payload `device_id` and the authenticated identity is rejected before state mutation.
 - `timestamp` must be RFC3339 UTC and within a bounded clock-skew window (target ±10s) at the point of validation.
 - `accel_*` and `gyro_*` values must be finite numbers and within sensor-safe ranges for the M5Stack Core2 AWS IMU.
-- `operating_state` must be one of `NORMAL`, `WARN`, `ALERT`, or `OFFLINE` and is derived by deterministic business logic.
+- `operating_state` must be one of `NORMAL`, `WARN`, or `ALERT` and is derived by deterministic motion logic. `OFFLINE` is not a device-authored state; it is server-derived from heartbeat timeout or missing telemetry and must not be self-reported.
 - `sequence` must be strictly increasing for a given device, or the message is considered duplicate/replay and is rejected or ignored.
+- `connectivity_state` is server-derived and is not accepted from a device telemetry payload.
 
 The prototype does not permit arbitrary free-form telemetry; malformed event shapes are rejected before any state is written.
 

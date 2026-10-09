@@ -6,7 +6,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-VALID_OPERATIONAL_STATES = {"NORMAL", "WARN", "ALERT", "OFFLINE"}
+DEVICE_OPERATIONAL_STATES = {"NORMAL", "WARN", "ALERT"}
+SERVER_CONNECTIVITY_STATES = {"ONLINE", "OFFLINE"}
+VALID_OPERATIONAL_STATES = DEVICE_OPERATIONAL_STATES
 MAX_CLOCK_SKEW_SECONDS = 10
 REQUIRED_FIELDS = {
     "device_id",
@@ -98,8 +100,14 @@ def validate_telemetry(
     *,
     last_sequence: int | None = None,
     now: datetime | None = None,
+    authenticated_device_id: str | None = None,
 ) -> Telemetry:
-    """Validate a telemetry payload before the digital twin may ingest it."""
+    """Validate a telemetry payload before the digital twin may ingest it.
+
+    The payload `device_id` is treated as telemetry data. The authoritative device
+    identity comes from the authenticated certificate / Thing / registry context,
+    which is passed in via `authenticated_device_id` when available.
+    """
     if not isinstance(payload, Mapping):
         raise TypeError("payload must be a mapping")
 
@@ -108,9 +116,20 @@ def validate_telemetry(
         missing_fields = ", ".join(sorted(missing))
         raise ValueError(f"Missing required fields: {missing_fields}")
 
+    if "connectivity_state" in payload:
+        raise ValueError(
+            "connectivity_state is server-derived and cannot be supplied by device telemetry"
+        )
+
     device_id = payload["device_id"]
     if not isinstance(device_id, str) or not device_id.strip():
         raise ValueError("device_id must be a non-empty string")
+
+    if authenticated_device_id is not None:
+        if not isinstance(authenticated_device_id, str) or not authenticated_device_id.strip():
+            raise ValueError("authenticated_device_id must be a non-empty string")
+        if device_id != authenticated_device_id:
+            raise ValueError("device_id does not match the authenticated device identity")
 
     sequence = payload["sequence"]
     if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 0:
@@ -133,8 +152,10 @@ def validate_telemetry(
     gyro_z = _as_float(payload["gyro_z"], "gyro_z")
 
     operating_state = payload["operating_state"]
+    if operating_state == "OFFLINE":
+        raise ValueError("OFFLINE is server-derived and cannot be self-reported by the device")
     if not isinstance(operating_state, str) or operating_state not in VALID_OPERATIONAL_STATES:
-        raise ValueError("operating_state is not in the allowed enum")
+        raise ValueError("operating_state is not in the allowed device enum")
 
     timestamp = _validate_timestamp(payload["timestamp"], now=now)
     derived_state = derive_operating_state((accel_x, accel_y, accel_z))
