@@ -513,3 +513,275 @@ The main residual risks are not code quality issues; they are architecture and o
 The current repository is a clean local prototype with sensible validation logic and good discipline around secret scanning. The architecture is small and reviewable, and the proposed AWS path is a reasonable prototype boundary. However, the live security controls for device identity, certificate handling, AWS IoT authorization, and least-privilege IAM remain unproven and must be reviewed in a human-authored deployment design before the project proceeds to any sandbox environment.
 
 This review does not claim live AWS/platform evidence. It does not authorize a sandbox deployment, and it does not broaden permissions or invent certificate material or AWS secrets.
+
+## Independent operations review for current `main`
+
+Reviewer: fresh operations review of the current `origin/main` branch. This review is limited to repository evidence, architecture intent, and the controls required for a sandbox deployment. No AWS resources were provisioned, no credentials were generated, and no live AWS/device evidence was claimed.
+
+### Operations scope and assessment basis
+
+The project is a single-device proof-of-value for an industrial digital twin: M5Stack Core2 for AWS publishes telemetry through AWS IoT Core, a Lambda validates and normalizes the message, a state store holds the latest accepted condition, and TwinMaker exposes it as the current entity state. The question for Operations is not whether the code is locally elegant; it is whether the planned path can be safely operated in a sandbox with controlled rollback, auditable evidence, and clear failure recovery.
+
+The repository gives good evidence for the local validation contract, but it does not provide executed AWS/device evidence for the real path. Operations therefore treats the sandbox deployment as a gated, explicitly approved future step rather than as an already-proven operating system.
+
+### 1. Safe sandbox operation posture
+
+The prototype is not yet safe to operate in a sandbox because the deployment path is not fully specified and the required evidence set is still incomplete. The current code and docs support the following operating posture only in a review-only mode:
+
+- sandbox-only deployments only, with explicit account and region controls;
+- no production account or production data allowed;
+- no default or wildcard permissions; all IAM must be least privilege and reviewable;
+- no secret material in Git, build comments, config files, or runtime logs;
+- a documented, reversible teardown path that stops all AWS resources if the demo is not validated;
+- a review gate that requires human approval before any AWS mutation is performed.
+
+Operational blocker: the repository does not yet provide a signed-off AWS deployment plan, access model, rollback plan, or live demo evidence for the actual sandbox path.
+
+### 2. Deployment sequence and rollback
+
+Recommended sequence for any first sandbox deployment:
+
+1. Human confirms the AWS account, region, sandbox budget, and resource owner.
+2. Human approves the exact set of AWS resources, IAM policies, certificate issuance flow, and retention policy.
+3. Device identity and certificate principal are reviewed against the Thing or registry mapping.
+4. IoT policy is reviewed for least privilege and topic scope.
+5. A dry-run or plan-only review confirms the intended resources, their lifecycle, and their cost.
+6. Only after approval is a sandbox deploy executed.
+7. A short live telemetry demonstration validates the path end-to-end.
+8. If the demo fails or the system does not meet the acceptance criteria, the operator immediately stops the demo flow and invokes teardown.
+
+Rollback requirements:
+
+- destroy all ephemeral AWS resources created for the sandbox demo;
+- revoke or disable device credentials if they were created for the demo;
+- remove any log retention artifacts or temporary state that are not part of the reviewed retention policy;
+- restore the repo to the review-only state if the live demo does not prove the operational plan;
+- keep the rollback log and decision record, with precise timestamps and human approval references.
+
+A deployment is not considered safe if there is no documented rollback path that can remove the resources without manual guesswork.
+
+### 3. Failure modes across device, IoT Core, Lambda, state storage, and TwinMaker
+
+#### Device failure modes
+
+- device disconnects or loses network connectivity;
+- device sends stale timestamps or out-of-order sequence values;
+- device presents a mismatched `device_id` or invalid certificate principal;
+- device restarts and reuses a stale counter or clock without a verified reset path.
+
+Required control: the real AWS path must reject device-originated state that is stale, replayed, or identity-mismatched. The payload `device_id` is not a trust anchor; the certificate or registry must be.
+
+#### IoT Core failure modes
+
+- auth failure; topic policy mismatch; certificate expiration or revocation;
+- topic rules fail or route to the wrong path;
+- message backlog or queue saturation during a device reconnect spike;
+- duplicate delivery triggered by retry behavior.
+
+Required control: narrow topic restrictions, explicit policy review, and bounded retries that preserve idempotency.
+
+#### Lambda failure modes
+
+- invalid JSON or schema mismatch;
+- timeout while processing a message;
+- partial write or write before validation is complete;
+- poison message that keeps retrying without resolution.
+
+Required control: fail closed, reject malformed messages before state mutation, and preserve the last known good state.
+
+#### State-store failure modes
+
+- write timeout or partial write;
+- duplicate write after retry;
+- stale rows overriding newer state; inconsistent last-write-wins behavior;
+- table or index retention causing cost surprise.
+
+Required control: use strictly monotonic per-device sequence checks, idempotent writes, and a clear last-known-good state model.
+
+#### TwinMaker failure modes
+
+- entity property write fails or times out;
+- stale state from a prior device message overwrites a newer valid update;
+- inability to render or observe the entity for troubleshooting.
+
+Required control: keep synchronized state in a latest-state store and fail the visual update without corrupting the source-of-truth state.
+
+### 4. Retries, idempotency, duplicate handling, and poison-message behavior
+
+The repo’s local telemetry logic is right to reject staleness and replayed values. In a live AWS sandbox, the same logic must be enforced at the server boundary with explicit operational behavior:
+
+- retries must be bounded and should not amplify the same message endlessly;
+- duplicate messages must be detected by device identity + sequence + timestamp, not only by payload-only heuristics;
+- stale messages must be discarded with a visible reason, not converted into a state mutation;
+- poison messages must be quarantined or counted as rejected event traffic and not retried indefinitely;
+- state writes must be idempotent for the same device and sequence number;
+- if the device reconnects after network loss, sequence continuity must be preserved or the system must explicitly treat reconnects as a new window with a reset policy that is reviewed and documented.
+
+Without these controls, the sandbox path is vulnerable to data drift, duplicate writes, and false operational status changes.
+
+### 5. Observability: logs, metrics, alarms, and proof that the demo worked
+
+Required observability before the first sandbox deployment:
+
+- structured logs for message accepted/rejected, with reason codes rather than raw payload dumps;
+- a per-device sequence counter and last accepted timestamp metric;
+- stale/replay/rejected message counters by reason;
+- Lambda duration, timeout, and error metrics;
+- state-store write latency and write failures;
+- TwinMaker sync success/failure counters;
+- device connection/disconnection metrics;
+- explicit alarm thresholds for repeated rejection spikes or sustained offline status.
+
+What would prove the demo worked:
+
+- the device successfully publishes a message over authenticated MQTT/TLS;
+- IoT Core reports the message at the exact topic for that device;
+- the Lambda logs a validation outcome with a single accepted event and no secret leakage;
+- the latest-state store records the new asset state with the same sequence number;
+- TwinMaker reflects the new asset condition within the agreed 10-second target;
+- the event timestamp and sequence are captured in logs and can be matched to the device payload;
+- a real motion event changes the observed state from `NORMAL` to `WARN` or `ALERT` and the before/after values are recorded.
+
+This must be captured as evidence, not inferred from local code checks.
+
+### 6. Stale/offline devices and device reconnect behavior
+
+The semantics of `OFFLINE` must be clarified before any sandbox deployment. In the current repo, `OFFLINE` exists in the enum but is not derived by the domain logic. Operations requires the following definition:
+
+- `OFFLINE` must be a server-side derived state based on heartbeat or missing-telemetry timeout, not a client-selected free-form payload value;
+- if the device disconnects, the system should retain the last known good state and mark the device as stale or offline only after a defined timeout;
+- reconnect behavior must be explicit: reconnect after a short outage should not be treated as a new state if the message sequence continues; reconnect after a longer outage should trigger a clear offline-status transition and a fresh sequence policy or explicit reset.
+
+The project should not permit a device to self-report `OFFLINE` in the message payload unless that behavior is uniquely defined and server-side enforced. Otherwise it is a spoofing vector and a source of false alarm and false state.
+
+### 7. Recovery after Lambda/state-store/TwinMaker failure
+
+Recovery requirements:
+
+- keep the last known good asset state as the source-of-truth and never overwrite it with a corrupt or stale message;
+- if Lambda fails, preserve the event in a durable queue or log stream for replay after recovery;
+- if the state store is unavailable, do not accept a new state mutation until the write is confirmed; prefer explicit rejection over silent cache-only state;
+- if TwinMaker fails, continue to store the latest valid state and retry sync with backoff; do not delete the state on a failed visualization update;
+- recover with a bounded retry loop and clear alerting; do not retry indefinitely without timeouts or rate limits.
+
+The project should be able to recover cleanly after a single component outage without broad permission or data-loss assumptions.
+
+### 8. Cost controls and cleanup requirements
+
+The sandbox prototype must remain intentionally small. Required controls:
+
+- select a low-cost AWS sandbox account and region;
+- avoid always-on resources that are unnecessary to prove the demo;
+- keep the device message rate low and bounded at or below the project target;
+- disable or delete any nonessential data retention and observability resources when the demo is complete;
+- document a cleanup task list and the expected cost ceiling before deployment;
+- define a maximum sandbox lifetime and a mandatory teardown if the demo does not reach the agreed acceptance criteria.
+
+No AWS resource should remain running without explicit human ownership and a documented expiry window.
+
+### 9. Data retention and resource lifecycle
+
+The prototype should define lifecycle rules for all data and resources:
+
+- telemetry retention must be explicit and limited to the demo window unless human review approves a longer retention period;
+- logs should be retained only as long as is required for troubleshooting and then expired or deleted;
+- state-store keys should only retain the latest asset state required for the demo;
+- any temporary device certificates or test identities must be destroyed after the demo or when the sandbox is closed;
+- resource owners and cleanup owners must be recorded before the sandbox deployment begins.
+
+The repository states that infrastructure should not add AWS services without a business requirement; this should apply to the sandbox as well. If a resource is unnecessary to prove the architecture, it should not be created.
+
+### 10. Sandbox isolation from production
+
+A sandbox must not share account or resource boundaries with production or long-lived business systems. Before deployment, the project should confirm:
+
+- the AWS account is a dedicated sandbox or dev account;
+- the region is explicitly designated for prototype use;
+- resource names are unique and clearly tagged with the demo scope;
+- production data and credentials are not used by the prototype;
+- all IAM actions are isolated to the sandbox resource identifiers only.
+
+Because this project is intentionally narrow, any production connection or shared resource should be treated as a blocker.
+
+### 11. Runbook requirements
+
+The sandbox runbook must include, at minimum:
+
+- resource inventory and owners;
+- account and region details;
+- device certificate issuance and rotation procedure;
+- IoT Core topic and policy review;
+- Lambda validation logic and error codes;
+- state-store failure and replay recovery steps;
+- TwinMaker state visibility check;
+- expected normal behavior and what constitutes a rejected message;
+- alarm thresholds and escalation contacts;
+- restart and reconnect procedures for the device;
+- standard rollback and teardown steps.
+
+Without a runbook, the system cannot be safely operated or recovered in a sandbox.
+
+### 12. Evidence needed before and after deployment
+
+Before any sandbox deployment, the project should have evidence for:
+
+- authoritative device identity mapping from certificate principal to Thing or registry identity;
+- least-privilege IoT policy and IAM definitions;
+- exact AWS account, region, resources, and expected cost ceiling;
+- human approval for the exact resource set and deletion plan;
+- explicit `OFFLINE` semantics and the server-side replay/stale validation plan;
+- log redaction and secret-handling policy.
+
+After deployment, the project should capture evidence for:
+
+- successful authenticated device publish;
+- accepted/rejected message reason codes;
+- message latency from device publish to accepted state write;
+- transition from one operating state to another under controlled motion;
+- reconnect/disconnect handling and recovery path;
+- successful teardown and no resource left running after the demo.
+
+The repository currently does not contain that live AWS/device evidence; therefore the sandbox remains a future approval decision, not a completed operational milestone.
+
+### 13. Exact human approval points
+
+The first sandbox deployment should require at least these human approvals before any AWS mutation is performed:
+
+1. approval to create the sandbox account or use the designated dev/sandbox account;
+2. approval of the exact AWS region, resource list, and resource owners;
+3. approval of the Thing/device identity, certificate issuance path, and policy scope;
+4. approval of IAM least-privilege policies for IoT, Lambda, state store, and TwinMaker;
+5. approval of the cost ceiling and cleanup ownership model;
+6. approval of the runbook and rollback plan;
+7. approval to proceed only after at least one successful live demo proof or a documented exception.
+
+These approvals must be explicit and recorded. A repository review or a passing check is not sufficient authorization.
+
+### 14. Teardown procedure so no AWS resources are left running unintentionally
+
+A sandbox teardown checklist must be executed immediately after every demo or any failed deployment attempt:
+
+- disable or delete the device certificate or Thing if created for the demo;
+- remove the IoT Core topic rule and policy entries tied to the sandbox demo;
+- delete Lambda resources, log groups, and any temporary execution or event triggers;
+- remove state-store entries or tables that were created for the prototype if they are not expressly required for an approved longer-lived sandbox;
+- delete TwinMaker entity or asset resources created for the demo;
+- remove any dashboards, alarm resources, or object storage artifacts created for the experiment;
+- confirm no resources remain running in the sandbox account and record the final teardown status.
+
+If any step cannot be executed, the deployment should be treated as incomplete and the remaining resources flagged for immediate human review. The project must never leave an AWS sandbox resource in an unowned or unreviewed state.
+
+### Operations verdict
+
+The current `main` branch is a solid local proof-of-contract and a credible starting point for a minimal digital-twin design. It is not yet a safe sandbox-operating system. The operational blockers are real and specific:
+
+- authoritative device identity must come from the cert or registry context and not from unsafeguarded payload data;
+- IoT policies must be narrow and least privilege;
+- IAM must be least privilege end-to-end;
+- replay and stale enforcement must be server-side and not just local Python logic;
+- logs must not expose secrets or raw payloads;
+- `OFFLINE` semantics must be clarified before the project claims it can model disconnected devices safely.
+
+The correct operations decision is: do not approve a sandbox deployment yet. Continue only with a documented, human-reviewed runbook, explicit IAM and certificate design, measured live evidence, and a teardown procedure that can guarantee no AWS resources are left running unintentionally.
+
+This review does not claim live AWS/device evidence. It does not authorize sandbox deployment or resource creation. It documents the exact conditions required for approval of the first sandbox demo.
