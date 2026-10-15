@@ -16,6 +16,8 @@ class StatusLed {
     state_ = valid && state_ == LedState::publishing ? LedState::acknowledged : LedState::failed;
   }
   void failure() { state_ = LedState::failed; }
+  // Normal expiry and event-cap completion share the same terminal LED policy.
+  void end_session(bool failed) { if (failed) failure(); else idle(); }
   LedState state() const { return state_; }
   Rgb rgb() const {
     switch (state_) {

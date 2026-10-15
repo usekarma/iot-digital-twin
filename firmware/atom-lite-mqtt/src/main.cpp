@@ -28,9 +28,9 @@ void wipe(String& value) {
 }
 
 void finish(const char* result) {
-  if (strncmp(result, "ERROR_", 6) == 0 || strcmp(result, "PUBLICATION_UNKNOWN") == 0) led_failure();
-  else if (strcmp(result, "SESSION_EXPIRED") == 0) { status_led.idle(); show_led(); }
-  // SESSION_COMPLETE preserves green from the last validated PUBACK.
+  const bool failed = strncmp(result, "ERROR_", 6) == 0 || strcmp(result, "PUBLICATION_UNKNOWN") == 0;
+  status_led.end_session(failed);
+  show_led();  // Both SESSION_EXPIRED and SESSION_COMPLETE clear the LED before terminal state.
   WiFi.disconnect(false, false);
   WiFi.mode(WIFI_OFF);
   wipe(password); wipe(private_key); wipe(certificate); wipe(frame);
