@@ -1,0 +1,4 @@
+.pio/
+*.key
+*.pem
+provisioning*.json
