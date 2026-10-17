@@ -92,3 +92,13 @@ AC-only traceability gate. No new dependencies, cloud services or security gate 
 a fictional teaching model and saturate at CRITICAL; this is not a validated grid
 model. Idempotency and epochs are process-local; durable multi-producer state, cloud
 authorization and device application ACK need separately reviewed contracts.
+
+### ADR-005 clarification: sequence equals tick for this producer
+
+PR #19 review identified that the consumer admitted independently advancing sequences
+and ticks even though the producer emits exactly one observation per asset per tick.
+Enforce `sequence == tick` within the active epoch at the consumer boundary, rejecting
+mismatches without mutation. Retain per-asset ordering and permit skipped observations;
+asset interleaving does not require independent sequence and tick counters. Multiple
+observations per tick would require a future explicit contract revision. This narrows
+the consumer to the current offline model without changing generated observations.

@@ -82,7 +82,9 @@
       "evidence_type": "local-contract",
       "tests": [
         "tests/test_grid_simulator.py::test_interleaved_assets_replay_and_epoch_isolation",
-        "tests/test_grid_simulator.py::test_event_validation"
+        "tests/test_grid_simulator.py::test_event_validation",
+        "tests/test_grid_simulator.py::test_consumer_rejects_sequence_tick_mismatch_without_mutation",
+        "tests/test_grid_simulator.py::test_consumer_accepts_skipped_ticks_and_independent_assets"
       ],
       "notes": "Foundation for INT-09; intentional faulty rehearsal adapter is deferred."
     },

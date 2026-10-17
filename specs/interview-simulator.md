@@ -23,7 +23,9 @@ For the same seed/configuration and Python 3.12 runtime, histories are identical
 No wall clock, sleep, background workers or unbounded history retention is used.
 
 Events contain asset_id, epoch, per-asset sequence, tick, and severity. Epoch starts
-at 1; tick and sequences start at 0. Sequence advances once per emitted asset event.
+at 1; tick and sequences start at 0. Sequence advances once per emitted asset event, so `sequence == tick` within
+each epoch. The consumer enforces this invariant; it does not support multiple
+observations per tick or independently advancing event counters.
 Configuration bounds: seed 0–2**32-1, ticks/sequences 0–1000, epochs 1–1,000,000.
 Reject bools masquerading as integers. Reaching a bound fails before state mutation.
 
@@ -31,6 +33,8 @@ A separate current-state consumer is the future ingestion/query boundary. It rej
 unknown assets and invalid event fields. Duplicate/replayed sequences, old/future
 epochs, backward ticks and healing transitions cannot mutate current state. Sequence
 tracking is per asset in the active epoch; independent interleaved assets must advance.
+Skipped ticks are permitted: a latest-state consumer need not receive every observation.
+Sequence/tick mismatches are rejected with `False` and no state mutation.
 This is a single-threaded local consumer, not durable or authenticated cloud ingestion.
 
 Reset takes a bounded command ID and expected epoch. A successful reset increments

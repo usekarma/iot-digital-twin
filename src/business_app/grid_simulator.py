@@ -163,10 +163,10 @@ class GridStateView:
         self._last_reset: ResetReceipt | None = None
 
     def apply(self, event: AssetEvent) -> bool:
-        """Accept newer per-asset events; reject stale events without mutation."""
+        """Accept per-tick observations; reject invalid ordering without mutation."""
         if event.asset_id not in self._asset_ids:
             raise ValueError("unknown asset_id")
-        if event.epoch != self._epoch:
+        if event.epoch != self._epoch or event.sequence != event.tick:
             return False
         previous = self._states.get(event.asset_id)
         if previous is not None and (

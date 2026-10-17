@@ -1018,3 +1018,19 @@ No scanner exception or gate change was added. No real grid validation, durable
 idempotency, concurrent ingestion, dashboard, cloud/application ACK, physical LED
 validation, debugging exercise or timed interview rehearsal is established here.
 Issue #17 remains open. Existing Core2 and ATOM experiment evidence is unchanged.
+
+### PR #19 sequence/tick contract clarification
+
+The producer emits one observation per asset per tick, so the consumer now enforces
+sequence == tick within each epoch. New regression tests reject mismatches before
+and after initialization without mutation, and accept skipped ticks and independent
+asset interleaving. Existing replay, epoch, reset and transition tests remain intact.
+The AC-204 test mapping is extended; no acceptance ID or security gate is changed.
+
+Executed in the same isolated clone: `PYTHONPATH=src python scripts/check.py`
+(using the existing repository Python environment), exit 0: 85 tests passed,
+96.53% coverage, credential/spec scan, Ruff, strict mypy, Bandit and dependency
+audit passed. Output: `/tmp/iot-simulator-zy99zb/check-contract.log`.
+The CLI with `--ticks 3 --reset-after 2` exited 0, and `cmp` against the earlier
+recorded JSONL exited 0, confirming unchanged demonstration output. No cloud,
+MQTT or hardware operations were performed. Independent CI review remains required.

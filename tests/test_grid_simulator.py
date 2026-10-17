@@ -90,7 +90,7 @@ def test_interleaved_assets_replay_and_epoch_isolation() -> None:
     before = view.snapshot()
     assert not view.apply(events[0])
     assert not view.apply(events[1])
-    assert not view.apply(replace(events[1], epoch=2, sequence=2))
+    assert not view.apply(replace(events[1], epoch=2, sequence=2, tick=2))
     assert not view.apply(replace(events[1], sequence=2, tick=0))
     assert not view.apply(replace(events[0], sequence=11, tick=11, severity=0))
     with pytest.raises(ValueError, match="asset"):
@@ -224,3 +224,32 @@ def test_combined_faults_cap_at_critical() -> None:
     # Seed 1 selects the healthy neighbor of the initial critical asset.
     source = GridSimulator(SimulatorConfig(seed=1))
     assert source.step()[1].severity == 2
+
+
+@pytest.mark.parametrize("sequence,tick", [(2, 1), (1, 2), (0, 1), (1, 0)])
+def test_consumer_rejects_sequence_tick_mismatch_without_mutation(sequence: int, tick: int) -> None:
+    source = GridSimulator(SimulatorConfig())
+    view = GridStateView(source.config)
+    event = source.snapshot()[1]
+    invalid = replace(event, sequence=sequence, tick=tick)
+    # Enforce the contract even before this asset has a previous observation.
+    assert not view.apply(invalid)
+    assert view.snapshot() == ()
+    consume(view, source.snapshot())
+    before = view.snapshot()
+    assert not view.apply(invalid)
+    assert view.snapshot() == before
+
+
+def test_consumer_accepts_skipped_ticks_and_independent_assets() -> None:
+    source = GridSimulator(SimulatorConfig())
+    view = GridStateView(source.config)
+    consume(view, source.snapshot())
+    first = source.step()
+    source.step()
+    third = source.step()
+    assert view.apply(third[0])
+    assert view.apply(first[1])
+    assert not view.apply(first[0])
+    assert view.apply(third[1])
+    assert all(e.sequence == e.tick for e in view.snapshot())
