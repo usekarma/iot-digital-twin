@@ -73,8 +73,8 @@ Blue (0,0,24) spans Wi-Fi/TLS/MQTT connection. Yellow (24,24,0) starts before th
 PUBLISH write and remains until exact packet-ID PUBACK or failure. Green (0,24,0)
 is set only after validated PUBACK; it persists until another attempt, expiry or
 failure. Red (24,0,0) marks connection, clock, publish/unknown and configuration/
-command errors. Idle/startup/accepted configuration/normal expiry is off; final
-SESSION_COMPLETE retains acknowledged green. Green proves broker ACK, not human
+command errors. Idle/startup/accepted configuration/normal expiry is off; both
+SESSION_COMPLETE and SESSION_EXPIRED turn the LED off. Green proves broker ACK, not human
 console visibility. No minimum color dwell time or blocking LED delay is added.
 The 120-second window, three-event cap and button debounce are unchanged.
 
@@ -84,3 +84,13 @@ alongside Wi-Fi, and whether the yellow interval is visually noticeable. The cac
 core driver has no return status; an electrical/driver failure may leave LED output
 incorrect without being detected. Serial statuses remain the independent diagnostic.
 Reference: https://docs.m5stack.com/en/homeassistant/devices/atom_lite.
+
+### Prepared terminal LED correction
+
+The executed EXP-007 image intentionally left green latched at SESSION_COMPLETE.
+Its terminal flag then prevented the expiry path from clearing it. This candidate
+uses one terminal policy: normal expiry and third-event completion both turn off;
+connection/publish/clock failures and unknown results stay red. PUBACK green may
+be brief on the final event because completion immediately clears it; no extra
+delay is added. Window/cap, event identity and network behavior are unchanged.
+This correction is prepared only, not flashed or hardware validated.

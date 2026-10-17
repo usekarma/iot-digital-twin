@@ -18,6 +18,17 @@ int main() {
   led.connecting(); assert(led.state() == LedState::connecting);  // New press clears green.
   led.failure(); assert(led.state() == LedState::failed);
   led.idle(); assert(led.state() == LedState::idle);
+  // Both normal terminal reasons clear prior green; failures retain red.
+  for (unsigned normal_reason = 0; normal_reason < 2; ++normal_reason) {
+    led.connecting(); led.publishing(); led.puback(true);
+    assert(led.state() == LedState::acknowledged);
+    led.end_session(false);
+    assert(led.state() == LedState::idle);
+    assert(led.rgb().red == 0 && led.rgb().green == 0 && led.rgb().blue == 0);
+  }
+  led.connecting(); led.publishing(); led.end_session(true);
+  assert(led.state() == LedState::failed);
+  assert(led.rgb().red == 24 && led.rgb().green == 0 && led.rgb().blue == 0);
   // No event before arm; held-at-arm button requires stable release first.
   ButtonSession button;
   assert(button.sample(true, 100) == 0);
