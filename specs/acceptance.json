@@ -127,6 +127,37 @@
         "tests/test_transition_trace.py::test_cli_tracing_is_opt_in_and_preserves_state_output"
       ],
       "notes": "Synthetic rule execution only; no real-world causal inference or cloud/device evidence."
+    },
+    {
+      "id": "AC-209",
+      "spec": "specs/offline-dashboard.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_dashboard.py::test_dashboard_progression_and_bounded_history",
+        "tests/test_dashboard.py::test_projection_is_a_copy_not_mutable_session_state"
+      ],
+      "notes": "Local synthetic dashboard only. Browser observations are recorded separately; no cloud/device proof."
+    },
+    {
+      "id": "AC-210",
+      "spec": "specs/offline-dashboard.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_dashboard.py::test_dashboard_reset_duplicate_and_stale_requests",
+        "tests/test_dashboard.py::test_http_mutations_and_negative_cases"
+      ],
+      "notes": "Local synthetic dashboard only. Browser observations are recorded separately; no cloud/device proof."
+    },
+    {
+      "id": "AC-211",
+      "spec": "specs/offline-dashboard.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_dashboard.py::test_loopback_routes_and_assets",
+        "tests/test_dashboard.py::test_http_unknown_mutation_and_invalid_epoch",
+        "tests/test_dashboard.py::test_invalid_port_rejected_before_binding"
+      ],
+      "notes": "Local synthetic dashboard only. Browser observations are recorded separately; no cloud/device proof."
     }
   ]
 }

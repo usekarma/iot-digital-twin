@@ -31,3 +31,15 @@ Optional transition traces contain synthetic asset state only and use fixed expl
 templates. They do not accept secrets or external instructions. Trace records are local
 producer evidence, not authenticated causality claims; epoch/idempotency limits remain
 unchanged. The bounded CLI emits at most one O(asset_count) trace per tick.
+
+## Local dashboard HTTP boundary
+
+The demonstration binds only 127.0.0.1, checks exact Host/same Origin and a per-process
+mutation token, and allows only three bundled static paths plus bounded JSON commands.
+It emits no CORS permission and uses a self-only CSP with framing forbidden.
+Step validates epoch/tick before mutation; reset uses existing idempotency receipts.
+The serial server bounds request bodies to 256 bytes and socket reads to three seconds.
+All tabs share a local session; stale commands stop rather than retry. Process-local
+tokens/epochs do not authorize real equipment. No request/token logging or file-path
+input is accepted. Reverse-proxy exposure, concurrent/durable services and real-data
+operation require separate designs; this prototype must remain local and synthetic.
