@@ -26,6 +26,34 @@ TwinMaker entity property / simple asset state
 
 SiteWise should be introduced only if the team decides that TwinMaker needs a supported SiteWise-backed asset property model or that historical time-series is essential for the stakeholder demo. Until that requirement is proven, the architecture should stay lean.
 
+## Cross-repo ownership and config contract
+
+The sibling repos already encode a stronger separation of responsibilities than the prototype brief originally made explicit:
+
+- `aws-config` owns the desired state and environment bindings for AWS resources. It writes configuration under `${IAC_PREFIX:-/iac}/<component>/<nickname>/config` and stores the binding metadata under `account_environments/<binding-name>.json`.
+- `aws-lambda` owns Lambda application code, testing, and packaging.
+- `aws-iac` owns the Terraform/Terragrunt implementation. It reads those config values through `TF_COMPONENT`, `TF_NICKNAME`, `TF_REGION`, and `TF_ACCOUNT_ID`, and it publishes runtime metadata under the same path family as `/runtime` values.
+- This repository owns the product contract and the behavior proof: device telemetry validation, server-derived state semantics, trust boundaries, and the acceptance logic that must hold before a live AWS deployment is considered credible.
+
+That means the first sandbox prototype should be treated as a configuration contract, not as a live AWS mutation. The expected aws-config shape for the prototype is conceptually:
+
+```text
+aws-config/
+  iac/
+    dev/
+      iot-digital-twin/
+        core2-aws-001/
+          config.json
+```
+
+The existing desired-state path is `iac/dev/iot-digital-twin/core2-aws-001/config.json`. The deployment binding remains unresolved pending human confirmation; no account binding is assumed.
+
+The config file should describe the prototype device and the target resource names, while Terraform in `aws-iac` consumes that file and resolves the actual AWS resource graph. The repository should never hard-code live account IDs, certificate data, or device secrets; those values remain in the AWS environment and are reviewed separately as human-approved outputs.
+
+Creating or editing a non-secret configuration file locally is preparation and does not require deployment approval. Publishing configuration to SSM or modifying AWS resources requires explicit human approval for the concrete operation and target.
+
+This separation matters because the prototype's real business question is not “can Terraform render the graph?” but “can a real device send valid telemetry, reject bad telemetry, and make state visible in a digital twin without the repository or automation making trust decisions for it?”
+
 ## Why the current proposal is too broad for phase 1
 
 The architecture as written does not yet justify the extra layers:
