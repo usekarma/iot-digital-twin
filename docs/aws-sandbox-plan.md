@@ -31,6 +31,32 @@ TwinMaker-visible device state
 
 This architecture intentionally does not begin with SiteWise. The first decision is whether the device-to-cloud path is valid and observable. SiteWise remains a later option when historical time-series or richer asset semantics are required.
 
+## Cross-repo contract for the first sandbox
+
+The existing sibling repos define a clear split that should guide this prototype:
+
+- `aws-config` is the desired-state repository. It owns the environment binding and the per-instance configuration values that are later published to SSM under `${IAC_PREFIX:-/iac}/<component>/<nickname>/config`.
+- `aws-lambda` owns Lambda application code, testing, and packaging.
+- `aws-iac` is the Terraform/Terragrunt implementation repository. It reads those values through the standard `TF_COMPONENT`, `TF_NICKNAME`, `TF_REGION`, and `TF_ACCOUNT_ID` variables and publishes `/runtime` metadata after deployment.
+- `iot-digital-twin` remains the contract and behavioral authority. It defines the telemetry validation rules, trust boundaries, and evidence needed before calling the AWS path credible.
+
+This design implies a concrete future contract for the sandbox:
+
+```text
+aws-config/
+  iac/
+    dev/
+      iot-digital-twin/
+        core2-aws-001/
+          config.json
+```
+
+The existing desired-state path is `iac/dev/iot-digital-twin/core2-aws-001/config.json`. The deployment binding remains unresolved pending human confirmation; no account binding is assumed.
+
+The config file would hold the reviewed device naming, target topic, runtime behavior, and any resource references needed for the prototype. The `aws-iac` layer would then resolve the infrastructure graph and state metadata around that component nickname. The non-secret configuration file belongs in `aws-config`; creating or editing it locally is preparation and does not require deployment approval. Publishing configuration to SSM or modifying AWS resources requires explicit human approval for the concrete operation and target.
+
+This contract keeps the design reviewable and reversible while honoring the repo boundary already used by the sibling AWS projects: config is not approval, and approval is not an automatic AWS mutation.
+
 ## Why this is the correct first AWS pattern
 
 Current AWS IoT TwinMaker guidance uses a connector-based model for external data sources. In that model, a Lambda-based connector or first-party connector is the way TwinMaker reads data from sources that are not automatically exposed by the native SiteWise integration.
@@ -52,6 +78,7 @@ This is the smallest architecture that satisfies the prototype acceptance criter
 The sandbox resource inventory should include the following.
 
 ### 1. AWS IoT Thing
+
 - Purpose: represent the physical device as an authoritative AWS device identity.
 - Naming: `core2-aws-001` for the prototype device.
 - Dependencies: IoT certificate attachment, IoT policy attachment, MQTT topic wildcard restrictions, and Thing registry binding.
@@ -60,6 +87,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete the Thing after the demo or revoke the certificate and detach it before deleting the Thing.
 
 ### 2. IoT certificate attachment model
+
 - Purpose: establish the certificate as the authoritative device identity on the AWS side.
 - Naming: `core2-aws-001-cert` or equivalent human-managed certificate alias.
 - Dependencies: Thing attachment + IoT policy permission.
@@ -68,6 +96,7 @@ The sandbox resource inventory should include the following.
 - Teardown: revoke and disable the certificate before deleting the Thing and policy association.
 
 ### 3. IoT policy
+
 - Purpose: allow the device to connect and publish only to its own telemetry topic.
 - Naming: `iot-digital-twin-core2-aws-001-device-policy`.
 - Dependencies: Thing, certificate principal, telemetry topic.
@@ -76,6 +105,7 @@ The sandbox resource inventory should include the following.
 - Teardown: detach certificate and delete the policy.
 
 ### 4. MQTT topic structure
+
 - Purpose: ensure each device has a narrow, reviewable publish channel.
 - Naming: `devices/core2-aws-001/telemetry`.
 - Dependencies: IoT policy and the IoT topic rule.
@@ -84,6 +114,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete the topic rule and update policy to deny publication.
 
 ### 5. IoT topic rule
+
 - Purpose: route accepted telemetry to the ingestion Lambda.
 - Naming: `core2-aws-001-ingest-rule`.
 - Dependencies: IoT topic, Lambda function permission, Lambda ARN.
@@ -92,6 +123,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete the IoT topic rule.
 
 ### 6. Ingestion Lambda
+
 - Purpose: validate the payload, reject replay/stale data, enforce authoritative identity checks, normalize state, and forward accepted state to the latest-state store.
 - Naming: `iot-digital-twin-ingest`.
 - Dependencies: IoT rule invocation, IAM role, DynamoDB write access, CloudWatch logs.
@@ -100,6 +132,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete the Lambda function and clean up log groups.
 
 ### 7. Latest-state store
+
 - Purpose: hold the most recent accepted device state and sequence value.
 - Naming: `iot-digital-twin-latest-state`.
 - Dependencies: ingestion Lambda IAM role, optional connector Lambda read access.
@@ -108,6 +141,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete the table or empty the demo data set as part of cleanup.
 
 ### 8. TwinMaker workspace
+
 - Purpose: provide the digital-twin environment and the entity model for the demo.
 - Naming: `iot-digital-twin-demo-workspace`.
 - Dependencies: IAM roles, entity model, connector integration, entity data sources.
@@ -116,6 +150,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete workspace and all associated entities/components if no longer needed.
 
 ### 9. TwinMaker entity and component model
+
 - Purpose: represent the device as a single TwinMaker asset with properties such as `device_id`, `last_sequence`, `last_timestamp`, `operating_state`, and `connectivity_state` if server-derived.
 - Naming: `core2-aws-001-entity` and `core2-aws-001-component`.
 - Dependencies: workspace, component type, connector configuration.
@@ -124,6 +159,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete entity/component references before removing the workspace.
 
 ### 10. TwinMaker Lambda data connector
+
 - Purpose: expose the latest accepted state to TwinMaker in the connector model rather than writing state ad hoc outside the supported service pattern.
 - Naming: `iot-digital-twin-twinmaker-connector`.
 - Dependencies: workspace and latest-state table.
@@ -132,6 +168,7 @@ The sandbox resource inventory should include the following.
 - Teardown: remove connector and workspace bindings before deleting the function.
 
 ### 11. IAM roles and policies
+
 - Purpose: enforce least privilege at each boundary.
 - Naming: `iot-digital-twin-ingest-role` and `iot-digital-twin-connector-role`.
 - Dependencies: AWS services invoked by each component.
@@ -140,6 +177,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete or detach policies before deleting the role.
 
 ### 12. CloudWatch log groups
+
 - Purpose: capture accepted and rejected telemetry reasoning without storing secrets or certificate material.
 - Naming: `/aws/lambda/iot-digital-twin-ingest` and `/aws/lambda/iot-digital-twin-connector`.
 - Dependencies: Lambda execution role and logging configuration.
@@ -148,6 +186,7 @@ The sandbox resource inventory should include the following.
 - Teardown: delete the log groups after demo validation or rely on retention policy.
 
 ### 13. Security/operational alarms and metrics
+
 - Purpose: guard against rejections, callbacks, or state-write failures.
 - Naming: alarm names keyed to `iot-digital-twin-*`.
 - Dependencies: CloudWatch metrics from the Lambda and rule invocation path.
@@ -160,6 +199,7 @@ The sandbox resource inventory should include the following.
 The prototype must use exactly one certificate for the prototype device.
 
 ### Required model
+
 - The device certificate is authoritative.
 - The Thing identity is bound to the certificate principal.
 - The payload `device_id` is never treated as the trust anchor.
@@ -167,6 +207,7 @@ The prototype must use exactly one certificate for the prototype device.
 - The private key and certificate material are never committed to Git or stored in Terraform state.
 
 ### Provisioning model
+
 The human-controlled path is:
 
 1. create a sandbox IoT Thing in AWS;
@@ -179,6 +220,7 @@ The human-controlled path is:
 This is the correct pattern because Terraform certificate resources may place private key material in state or plan output, which conflicts with the repository’s no-secret policy and security review requirements.
 
 ### Revocation and cleanup
+
 - disable or revoke the certificate before deleting the Thing;
 - detach the policy before deleting the cert;
 - remove the device from the device registry if the demo is being torn down;
@@ -193,6 +235,7 @@ devices/core2-aws-001/telemetry
 ```
 
 ### Desired policy semantics
+
 - `iot:Connect` is allowed only for the specific client ID and device certificate principal.
 - `iot:Publish` is allowed only to `devices/core2-aws-001/telemetry`.
 - `iot:Subscribe` is not required for the device unless a feedback path is explicitly designed.
@@ -226,6 +269,7 @@ This is a human-reviewed policy sketch only; no real account identifiers are inc
 The IoT topic rule invokes an ingestion Lambda that enforces the local contract and cloud-side rules.
 
 ### Lambda responsibilities
+
 - read the authoritative device identity from the AWS IoT context or registry mapping, not from the payload
 - validate JSON structure, required fields, and numeric sanity
 - reject stale timestamps and future-skewed messages beyond the allowed window
@@ -236,6 +280,7 @@ The IoT topic rule invokes an ingestion Lambda that enforces the local contract 
 - write only accepted, normalized state to the latest-state store
 
 ### Retry and idempotency requirements
+
 - no broad retry loops on validation failures
 - validation failure is not retried automatically
 - sequence/idempotency state must be enforced in the state store, not in memory
@@ -243,14 +288,17 @@ The IoT topic rule invokes an ingestion Lambda that enforces the local contract 
 - a duplicate or stale message must never overwrite the last known good state
 
 ### Sequence authority
+
 The authoritative sequence tracking must live in the durable state store. The Lambda must compare the incoming `sequence` to the persisted latest value and use a conditional write or transaction-like compare-and-swap pattern to ensure only strictly newer messages advance the latest state.
 
 ## Latest-state persistence design
 
 ### Selected store: DynamoDB
+
 DynamoDB is the smallest appropriate design for this prototype because it provides durable latest-state tracking and a simple conditional update pattern for sequence validation.
 
 ### Recommended table shape
+
 - table name: `iot-digital-twin-latest-state`
 - primary key: `device_id` (partition key)
 - sort key: optional `asset_type` if needed, but not necessary for a single device
@@ -264,12 +312,14 @@ DynamoDB is the smallest appropriate design for this prototype because it provid
   - `updated_at`
 
 ### Conditional update behavior
+
 - only accept a message when `sequence > last_sequence`
 - reject stale or duplicate updates before writing
 - retain the last known good state if a message is rejected
 - use a condition expression or compare-and-swap logic to avoid race conditions and double-write behavior
 
 ### Security
+
 - encryption at rest using AWS-managed KMS keys or a reviewed customer-managed key
 - the ingestion Lambda should have write access only to the specific table and exact item paths required for the prototype
 - no wildcard table access in the runtime policy
@@ -277,9 +327,11 @@ DynamoDB is the smallest appropriate design for this prototype because it provid
 ## TwinMaker integration design
 
 ### Decision
+
 We will not start with a full SiteWise-backed TwinMaker architecture. Instead, we will use the current connector model: a Lambda-based data connector reads the latest accepted state from DynamoDB and exposes it to TwinMaker through a minimal entity and component model.
 
 ### Minimal TwinMaker design
+
 - workspace: `iot-digital-twin-demo-workspace`
 - entity: `core2-aws-001`
 - component type: `deviceState` or `assetCondition`
@@ -292,37 +344,45 @@ We will not start with a full SiteWise-backed TwinMaker architecture. Instead, w
   - `motion_summary` or acceleration summary
 
 ### Why not direct Lambda write to TwinMaker?
+
 The supported model is connector-driven. A direct Lambda write path is not the correct assumption for the first sandbox design unless the current AWS API contract explicitly supports that direct write pattern and the required connector configuration is available. The narrower, safer path is a connector that reads from the latest-state store and exposes the data to TwinMaker.
 
 ### Resulting demo behavior
+
 The TwinMaker view shows the final accepted condition and the motion summary after a valid message is accepted; a rejected message does not change the visible state.
 
 ## Least-privilege IAM design
 
 ### IoT Core
+
 - `iot:Connect` scoped to the specific device client ID
 - `iot:Publish` scoped to the exact telemetry topic
 - no topic wildcards beyond a tightly justified device namespace
 - no CloudTrail or broader IAM actions for the device principal
 
 ### Ingestion Lambda
+
 - read the IoT topic message from the rule invocation
 - write accepted state only to the exact DynamoDB table / item(s)
 - write CloudWatch logs only
 - no AWS management actions or broad resource wildcard access
 
 ### TwinMaker connector Lambda
+
 - read from the specific DynamoDB table and item set
 - read/write only the specific TwinMaker workspace and entity/component metadata required by the demo
 - no broad wildcard access to other workspaces or accounts
 
 ### IAM rule
+
 Use resource-scoped ARNs wherever supported. Avoid blanket `Resource: "*"` unless the AWS API genuinely requires broad scope and the requirement is explicitly justified in the human review.
 
 ## Observability and evidence plan
 
 ### Metrics and logs
+
 Measure and retain the following:
+
 - accepted telemetry count
 - rejected telemetry count
 - rejected reason and category
@@ -333,7 +393,9 @@ Measure and retain the following:
 - end-to-end latency between publish and TwinMaker read
 
 ### Sanitization requirements
+
 No logs should include:
+
 - private keys
 - certificates or PEM material
 - AWS credentials
@@ -341,6 +403,7 @@ No logs should include:
 - raw security secrets
 
 ### Retention and cleanup
+
 - CloudWatch log retention should be limited to the sandbox window
 - logs older than the sandbox retention limit should be expired or deleted
 - no long-lived demo resources should remain after teardown
@@ -348,9 +411,11 @@ No logs should include:
 ## Acceptance evidence mapping
 
 ### AC-101
+
 Physical M5Stack publishes authenticated MQTT/TLS telemetry to AWS IoT Core.
 
 Required evidence:
+
 - Thing/certificate identity binding
 - device publish timestamp
 - IoT rule invocation timestamp
@@ -358,9 +423,11 @@ Required evidence:
 - sanitized logs showing successful, authenticated receipt and not a credential leak
 
 ### AC-103
+
 Accepted telemetry becomes TwinMaker-visible state within the required latency.
 
 Required evidence:
+
 - device publish timestamp
 - Lambda accepted-state timestamp
 - DynamoDB write timestamp
@@ -368,9 +435,11 @@ Required evidence:
 - latency calculation as `TwinMakerReadTime - DevicePublishTime`
 
 ### AC-104
+
 Physical movement changes the derived condition and the TwinMaker-visible state.
 
 Required repeatable flow:
+
 1. record stationary baseline
 2. confirm `NORMAL` in TwinMaker
 3. physically move or shake the device
@@ -392,6 +461,7 @@ The sandbox should be intentionally small and inexpensive:
 - minimal CloudWatch logs
 
 This should be serverless and pay-per-use, with the major recurring cost drivers being:
+
 - Lambda invocations
 - DynamoDB reads/writes
 - TwinMaker workspace and metadata objects
@@ -463,6 +533,7 @@ STOP
 ```
 
 Important guardrails:
+
 - no Terraform apply
 - no private key generation in Terraform
 - no certificate creation in Terraform state
