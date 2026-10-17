@@ -43,3 +43,20 @@ Actual branch protection and completed CD are not established by this slice.
 Next slices: review the narrative with Ted, add the opt-in debugging exercise using
 this same consumer boundary, then design a dashboard and separately approved cloud
 and physical-button application-ACK path. Physical LED validation remains pending.
+
+## Opt-in Karma rule trace
+
+```bash
+PYTHONPATH=src python -m business_app.simulate_grid --ticks 2 --trace
+```
+
+The additional `kind: trace` records contain immutable execution inputs, transitions,
+observations and a fixed-template explanation for asset-001. At tick 1 → 2:
+
+> asset-001, epoch 1, tick 1 -> 2: WARNING -> CRITICAL. asset-000 was CRITICAL
+> (severity 2) at tick 1 (+1). min(2, 1 + 0 + 1) = 2; uncapped severity 2.
+
+The disturbance targeted another asset; asset-000's pre-tick severity activated the
+propagation rule. This explains simulated execution, not actual electrical causality.
+Omit `--trace` to retain the original output. Reset works with the existing
+`--reset-after` option; traces after reset carry the new epoch.

@@ -26,3 +26,8 @@ state and must begin an isolated rehearsal, never a live session. Do not expose 
 consumer as an authenticated service without separate authorization, durable deduplication,
 concurrency, resource-limit and recovery designs. The original ignored mbedTLS fixture
 artifact limitation remains unchanged; no scanner exclusion is introduced.
+
+Optional transition traces contain synthetic asset state only and use fixed explanatory
+templates. They do not accept secrets or external instructions. Trace records are local
+producer evidence, not authenticated causality claims; epoch/idempotency limits remain
+unchanged. The bounded CLI emits at most one O(asset_count) trace per tick.

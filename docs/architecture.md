@@ -198,3 +198,11 @@ Domain classes have no I/O; `business_app.simulate_grid` is the terminal boundar
 The CLI owns the single-threaded source/consumer coordination. There is no atomic
 cross-process transaction, persistence, cloud authorization or device acknowledgment.
 See `specs/interview-simulator.md` before introducing any live adapter.
+
+## Opt-in synthetic transition evidence
+
+The Karma trace experiment records disturbances, predecessor effects and capped
+transitions during the same simulator calculation. `step_traced()` returns immutable
+records; `step()` and ordinary CLI output retain their existing contracts. No trace
+history is stored internally. See `specs/karma-transition-trace.md`; this adds no
+external service or general-purpose causal engine.
