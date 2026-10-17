@@ -146,3 +146,11 @@ Human review is required before:
 The agent may propose these actions and prepare code, plans, commands, and evidence. It may not treat those artifacts as authorization.
 
 Use `specs/` for detailed contracts and `docs/prototype-review.md` for observed feedback.
+
+## Separate interview milestone — Issue #17
+
+The offline fleet simulator is a second experiment for Ted's interview rehearsal.
+See [its contract](specs/interview-simulator.md) and [runbook](docs/interview-simulator-runbook.md).
+It uses synthetic electrical-asset degradation, independent of the Core2 IMU
+experiment and its existing acceptance/evidence. Its first slice provides deterministic
+local replay and reset; it does not establish AWS, TwinMaker, ATOM reset or hardware proof.

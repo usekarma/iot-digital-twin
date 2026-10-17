@@ -973,3 +973,48 @@ The remaining local-only evidence is:
 ### Verdict
 
 PR #11 resolves the local contract and evidence-contract issues it claimed to resolve. It does not prove a live device/AWS digital-twin path, and it should not be interpreted as deployment or sandbox approval. The repository is now consistent with the intended local contract boundaries, but live AWS/device observations remain required for the end-to-end prototype claims.
+
+## Issue #17: offline simulator first slice
+
+Source base: `73ca24c6895d884942bc52ce2c400cc76b4eb83e`; simulator implementation is the commit carrying this
+entry on `feature/offline-grid-simulator`. Sequential review by the implementation
+agent; no independent reviewer approval is claimed. Environment: Python 3.12.3
+pytest 9.0.3; ruff 0.13.2; mypy 1.18.2; bandit 1.8.6; pip-audit 2.9.0.
+
+Specification and behavioral tests were written before the module. The first targeted
+pytest run exited 2 at collection because `business_app.grid_simulator` did not yet
+exist; this records the starting point, not a failing behavioral assertion. After
+implementation and additional negative cases, the complete pipeline executed:
+
+```bash
+PYTHONPATH=src /home/ted/dev/iot-digital-twin/.venv/bin/python scripts/check.py
+PYTHONPATH=src /home/ted/dev/iot-digital-twin/.venv/bin/python -m business_app.simulate_grid --ticks 3 --reset-after 2
+```
+
+The pipeline ran in `/tmp/iot-simulator-zy99zb/checkout`, an isolated clone without
+ignored firmware/vendor artifacts. The initial pipeline exited 1 at dependency audit
+because sandbox DNS could not resolve PyPI. The complete network-enabled rerun exited
+0: 80 tests passed, coverage 96.53%, spec/credential scan, Ruff format/lint, strict mypy,
+Bandit and pip-audit passed; no known dependency vulnerabilities were found.
+Reports remain in the clone's ignored `artifacts/`; full output is locally available
+at `/tmp/iot-simulator-zy99zb/check-final.log`. CI must verify the pushed commit separately.
+
+Two separate CLI invocations exited 0; `cmp` exited 0 for their JSONL output. SHA-256:
+`4a63dcc817fa9bb93fa16019e64d538f4251bc02f0a5d14684c2683fc54474e0`.
+Observed asset-001: HEALTHY at tick 0, WARNING at tick 1, CRITICAL at tick 2,
+then HEALTHY in reset epoch 2 and WARNING on its first tick. Baseline totals returned
+to 3 healthy / 1 warning / 1 critical. Reset receipt recorded applied=true and
+duplicate_applied=false. No clock sleeps or network/device I/O occurred in the simulator.
+
+AC-201–AC-205 map to replay, persistence/neighbor propagation, reset/epoch isolation,
+per-asset ingestion, and finite synthetic terminal output. Negative tests cover
+invalid configuration/events/reset IDs, stale and future epochs, replayed sequence,
+backward tick/healing, unknown assets, duplicate/stale resets and tick exhaustion;
+configured fleet endpoints 3 and 50 are exercised.
+
+Limitations: the original workspace's ignored reproducible public mbedTLS test-fixture
+ELF still triggers its credential test; that artifact is not present in this clone.
+No scanner exception or gate change was added. No real grid validation, durable
+idempotency, concurrent ingestion, dashboard, cloud/application ACK, physical LED
+validation, debugging exercise or timed interview rehearsal is established here.
+Issue #17 remains open. Existing Core2 and ATOM experiment evidence is unchanged.

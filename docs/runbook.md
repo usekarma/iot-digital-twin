@@ -13,3 +13,8 @@ Define health checks that test readiness, workload and SLO signals, latency/erro
 Provide tested procedures for dependency outage, retry exhaustion, duplicate work, partial writes, overload, authentication failure, and data repair where relevant. State safe preconditions and destructive steps requiring authorization.
 
 Document rollback compatibility, trigger, procedure, validation, and observation window. Record restore/replay evidence, RPO/RTO, retention, and cost limits. Keep secrets and customer data out of runbook examples.
+
+## Offline interview rehearsal
+
+See [the simulator runbook](interview-simulator-runbook.md). It runs without network,
+MQTT or device operations. Existing physical experiments and their approvals remain separate.

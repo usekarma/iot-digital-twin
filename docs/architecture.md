@@ -180,3 +180,21 @@ Because the project's primary objective is to show the working digital-twin repr
 - Historical analytics, alerting, and shared scenes remain explicit future work.
 
 These assumptions should be closed before any AWS deployment activity is approved by a human reviewer.
+
+## Independent offline interview experiment
+
+For Issue #17, the first slice is a local Python simulator, independent of the Core2
+path above. A bounded seeded ring model emits immutable synthetic events into an
+in-memory ingestion/query consumer, and the terminal renders its current state.
+
+```text
+seed/config -> GridSimulator -> AssetEvent -> GridStateView -> terminal JSON
+local reset -> ResetReceipt -> new baseline / epoch in simulator and consumer
+```
+
+Sequences belong to individual assets within an epoch. Reset receipts advance the
+local epoch once; delayed events from the previous epoch cannot recontaminate it.
+Domain classes have no I/O; `business_app.simulate_grid` is the terminal boundary.
+The CLI owns the single-threaded source/consumer coordination. There is no atomic
+cross-process transaction, persistence, cloud authorization or device acknowledgment.
+See `specs/interview-simulator.md` before introducing any live adapter.
