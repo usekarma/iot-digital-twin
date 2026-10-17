@@ -1074,6 +1074,50 @@ The simulator retains no trace history. CLI/domain bounds and observation format
 unchanged. Independent CI and human review remain pending. No AWS, MQTT or physical-device
 operation was performed; this is synthetic execution evidence, not real-world inference.
 
+## Offline dashboard — Issue #17 local visible slice
+
+Base: merged PR #20, `9619153`; branch `feature/offline-iot-dashboard`.
+Sequential implementation review; independent human review remains pending.
+Environment: Python 3.12.3 with existing locked quality tools; actual browser
+Google Chrome 148.0.7778.96, isolated temporary profile. No runtime dependencies added.
+
+Spec and deterministic tests were written before the module; initial collection
+exited 2 because the module did not yet exist. Implementation tests then passed.
+Strict mypy initially found an inferred response-dictionary type mismatch; an explicit
+response annotation corrected it without weakening typing or gates.
+
+Full command in a clean source snapshot at `/tmp/iot-dashboard-y6rP3A/checkout`:
+`PYTHONPATH=src /home/ted/dev/iot-digital-twin/.venv/bin/python scripts/check.py`, exit 0.
+101 tests passed; coverage 94.78%; credential/spec scan, Ruff format/lint, strict mypy,
+Bandit and dependency audit passed, with no known vulnerabilities. Full output:
+`/tmp/iot-dashboard-y6rP3A/check.log`; reports are in the snapshot's ignored artifacts/.
+The original artifact-bearing workspace still has the previously identified public
+mbedTLS fixture scanner limitation; its ELF hash remains unchanged. No exclusions added.
+
+Additional executed checks: `node --check src/business_app/dashboard_assets/app.js`,
+exit 0; `python -m build --wheel --no-isolation --outdir /tmp/iot-dashboard-y6rP3A/dist`,
+exit 0. Wheel inspection verified index.html, style.css and app.js match source bytes.
+`make dashboard` served http://127.0.0.1:8765 successfully with the existing system Python.
+
+Actual Chrome DevTools interaction check (temporary standard-library harness, not a
+project dependency) exercised baseline, Step twice, asset-001 warning-to-critical,
+propagated arrow, recorded explanation, Reset/new epoch/history clearing, Play/Pause
+and automatic pause at tick 6. All passed. A 390px viewport had no body overflow and
+five assets. There were zero uncaught browser exceptions and zero external page
+network requests. All observed requests stayed on localhost. Evidence:
+`/tmp/iot-dashboard-y6rP3A/browser-results.log` and screenshot
+`/tmp/iot-dashboard-y6rP3A/dashboard.png`. Owned preview/browser processes are stopped
+after verification; these local evidence files are not hosted or uploaded to GitHub.
+
+AC-209–AC-211 tests cover deterministic projection, bounded 12-snapshot history,
+copy isolation, baseline/reset and duplicate receipts, stale step/reset rejection,
+loopback bind, static route allowlist, Host/Origin/token rejection, invalid JSON/body
+size/content type/epoch/reset ID/port. Existing simulator/trace tests remain unchanged.
+No change to model behavior or observation format. One process is shared by browser
+tabs and has no durable state; reload after another tab advances it. No real cloud,
+MQTT or device ACK is claimed. A 60-second talk track is provided, but a timed human
+rehearsal, recording, cloud/ATOM integration and debugging exercise remain pending.
+
 ## Issue #17 Phase 2: durable behavior planning/reference tests
 
 Base: `9619153`, merged PR #20; PR #21 remains separate. Branch
@@ -1106,3 +1150,13 @@ unresolved; pricing envelope is not a complete approved deployment cost estimate
 The original ignored public mbedTLS fixture artifact is preserved and still has its
 previously documented scanner limitation; no scanner exception was added.
 No AWS resources, credentials/policies, MQTT messages or hardware were modified.
+
+### PR #22 reconciliation with merged dashboard
+
+Merged main `b118ae1` into the planning branch, preserving both appended documentation
+sections and all AC-101–AC-215 mappings (with the existing intentional numeric gaps).
+Full `PYTHONPATH=src python scripts/check.py` in clean snapshot
+`/tmp/iot-conflict-check-7wh03emd` exited 0: 106 tests passed, 94.78% coverage;
+credential/spec scan, Ruff, strict mypy, Bandit and dependency audit passed.
+Original ignored artifacts and the existing scanner limitation remain unchanged.
+No merge of PR #22, cloud/device operation or security gate change was performed.

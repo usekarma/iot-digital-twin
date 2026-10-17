@@ -51,6 +51,13 @@ including reset and exhaustion, and accurate opt-in explanations without changin
 ordinary observations. See `specs/karma-transition-trace.md` and its additive mappings.
 These criteria establish synthetic rule execution only, not real-world inference.
 
+## Offline visible demonstration
+
+AC-209–AC-211 cover deterministic dashboard projection/bounded history, local
+reset/stale-command behavior, and the loopback-only bundled-asset HTTP boundary.
+See `specs/offline-dashboard.md`. This contributes to local INT-05 rehearsal;
+a measured 60-second run, recording and cloud/physical completion remain pending.
+
 ## Durable cloud contract reference tests
 
 AC-212–AC-215 cover controlled tick/reset/fence races, replay recovery and bounds,

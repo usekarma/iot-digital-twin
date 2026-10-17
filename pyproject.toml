@@ -35,3 +35,6 @@ source = ["business_app"]
 [tool.coverage.report]
 fail_under = 90
 show_missing = true
+
+[tool.setuptools.package-data]
+business_app = ["dashboard_assets/*.html", "dashboard_assets/*.css", "dashboard_assets/*.js"]

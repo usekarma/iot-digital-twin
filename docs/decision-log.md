@@ -115,6 +115,18 @@ Avoid a second rule implementation or post-hoc cause inference. Retain no intern
 trace history; consumers choose whether to retain bounded output. This is evidence of
 a fictional model's execution, not real-world causality or a general Karma engine.
 
+## ADR-007: Deliver the local visible demo with a loopback server
+
+Status: approved architecture, implementation for review.
+
+Use Python HTTPServer and bundled buildless assets. One local session drives Step,
+Play/Pause and Reset using the existing simulator and traces. Retain only 12 snapshots
+and the latest trace. Browser Play stops after tick 6 for a short legible demonstration.
+Exact epoch/tick preconditions reject duplicate/stale steps; receipt deduplication
+preserves reset behavior. Loopback/same-origin/token/body bounds limit the HTTP boundary.
+No frontend framework, dependency, external asset or new modeling abstraction.
+Cloud/ATOM control and the debugging exercise stay subsequent milestones.
+
 ## ADR-008: Specify durable demo reset before cloud implementation
 
 Status: planning baseline approved; adapter implementation and release pending.
