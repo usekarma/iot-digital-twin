@@ -51,3 +51,24 @@ This preserves the smallest credible end-to-end slice while leaving a clean upgr
 Status: accepted for template v2.
 
 Use AI for ambiguity reduction, experiments, implementation, and review. Require executable behavior contracts and deterministic engineering gates. Keep production promotion separate and fail closed until a real project supplies owned evidence. Keep external advisory audits live; record their temporal and network limitations.
+
+## ADR-004: Align sandbox ownership with the sibling repositories
+
+**Status:** proposed for review; no deployment authorization.
+
+**Context:**
+
+The documentation omitted Lambda runtime ownership, assumed a production environment binding, and conflated local configuration preparation with AWS mutation. The existing sandbox desired state uses `iac/dev/iot-digital-twin/core2-aws-001/config.json`.
+
+**Decision:**
+
+- `aws-lambda` owns Lambda application code, testing, and packaging.
+- `aws-config` owns non-secret desired-state configuration and environment bindings.
+- `aws-iac` owns Terraform/Terragrunt resources, IAM, and integration wiring.
+- `iot-digital-twin` owns the product contract, trust boundaries, and behavioral acceptance evidence.
+
+Use the existing `dev` desired-state path. The deployment binding remains unresolved pending human confirmation. Creating or editing non-secret configuration locally does not require deployment approval; publishing it to SSM or modifying AWS resources requires explicit human approval for the concrete operation and target.
+
+**Consequences:**
+
+Local documentation and configuration preparation remain reviewable without authorizing cloud mutation. Runtime packaging and infrastructure wiring have explicit owners. This decision adds no live device/AWS evidence and changes no telemetry acceptance criteria.
