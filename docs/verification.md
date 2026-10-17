@@ -1034,3 +1034,42 @@ audit passed. Output: `/tmp/iot-simulator-zy99zb/check-contract.log`.
 The CLI with `--ticks 3 --reset-after 2` exited 0, and `cmp` against the earlier
 recorded JSONL exited 0, confirming unchanged demonstration output. No cloud,
 MQTT or hardware operations were performed. Independent CI review remains required.
+
+## Karma opt-in transition trace follow-up
+
+Base: merged PR #19, main commit `2d97848`. Sequential implementation review only;
+no human approval of this implementation is claimed. Existing Python 3.12 verification
+environment and locked dependencies were used. No dependency/gate changes.
+
+Executed `PYTHONPATH=src python scripts/check.py` with the existing `.venv` interpreter
+against a clean snapshot of tracked and new source under `/tmp/iot-trace-K5xkSl/checkout`.
+Final exit 0: 91 tests passed, 96.71% coverage, credential/spec scanning, Ruff format/lint,
+strict mypy, Bandit and dependency audit passed; no known vulnerabilities. Full output:
+`/tmp/iot-trace-K5xkSl/check.log`; reports in that snapshot's ignored `artifacts/`.
+Earlier checks found test formatting and Bandit B101 (production assertion); both were
+corrected without suppressing findings. The assertion became an explicit RuntimeError.
+
+The full original-workspace check was also attempted; its credential test still matches
+the preserved ignored public mbedTLS test-fixture ELF. Its SHA-256 remains
+`04ea8250845a6beffee6aa80212371be58c2ae9b9f0eba3abca736d61221dfef`.
+No scanner exclusion was added. Original-workspace output:
+`/tmp/iot-trace-K5xkSl/original-workspace-check.log`. Clean-snapshot success does not
+establish that all unrelated ignored workspace artifacts pass credential scanning.
+
+AC-206–AC-208 behavioral tests verify contribution arithmetic including combined causes
+and saturation, exact predecessor/source-tick observations, absence of same-tick cascade,
+one random draw per tick, traced/untraced replay, reset and duplicate-reset behavior,
+trace exhaustion without state/randomness mutation, fixed-template explanation accuracy,
+and opt-in CLI output. Existing AC-201–AC-205 remain unchanged.
+
+Executed `PYTHONPATH=src python -m business_app.simulate_grid --ticks 2 --trace`:
+asset-001's tick 1 -> 2 explanation records WARNING -> CRITICAL, predecessor asset-000
+CRITICAL at tick 1 (+1), disturbance contribution 0, and min(2, 1 + 0 + 1) = 2.
+The recorded disturbance targeted asset-003. No inferred or AI-generated cause is used.
+
+Ordinary CLI output (`--ticks 3 --reset-after 2`) was compared to the earlier PR #19
+rehearsal and matched byte-for-byte, SHA-256
+`4a63dcc817fa9bb93fa16019e64d538f4251bc02f0a5d14684c2683fc54474e0`.
+The simulator retains no trace history. CLI/domain bounds and observation format remain
+unchanged. Independent CI and human review remain pending. No AWS, MQTT or physical-device
+operation was performed; this is synthetic execution evidence, not real-world inference.

@@ -6,6 +6,13 @@ import random
 import re
 from dataclasses import dataclass
 
+from business_app.transition_trace import (
+    Disturbance,
+    PropagatedEffect,
+    StateTransition,
+    TickTrace,
+)
+
 MAX_TICKS = 1000
 MAX_EPOCH = 1_000_000
 TICK_SECONDS = 60
@@ -122,20 +129,54 @@ class GridSimulator:
         )
 
     def step(self) -> tuple[AssetEvent, ...]:
-        """Advance one tick, applying simultaneous neighbor and seeded hazard effects."""
+        """Advance normally without allocating trace records."""
+        return self._advance(tracing=False)[0]
+
+    def step_traced(self) -> TickTrace:
+        """Advance once and return immutable evidence of that calculation."""
+        _, trace = self._advance(tracing=True)
+        if trace is None:
+            raise RuntimeError("traced advancement did not return execution evidence")
+        return trace
+
+    def _advance(self, *, tracing: bool) -> tuple[tuple[AssetEvent, ...], TickTrace | None]:
         if self._tick == MAX_TICKS:
             raise ValueError("tick limit reached; reset to start a new bounded run")
+        before = self.snapshot() if tracing else ()
+        selected = self._random.randrange(self.config.asset_count)
         increments = [0] * self.config.asset_count
-        increments[self._random.randrange(self.config.asset_count)] += 1
+        increments[selected] += 1
+        effects = []
         for index, severity in enumerate(self._severity):
             if severity == 2:
-                increments[(index + 1) % self.config.asset_count] += 1
+                target = (index + 1) % self.config.asset_count
+                increments[target] += 1
+                if tracing:
+                    effects.append(
+                        PropagatedEffect(before[index], self.config.asset_ids[target], 1)
+                    )
         self._severity = [
             min(2, severity + increment)
             for severity, increment in zip(self._severity, increments, strict=True)
         ]
         self._tick += 1
-        return self.snapshot()
+        observations = self.snapshot()
+        if not tracing:
+            return observations, None
+        disturbance = Disturbance(self._epoch, self._tick - 1, self.config.asset_ids[selected], 1)
+        transitions = tuple(
+            StateTransition(
+                old,
+                new,
+                int(index == selected),
+                increments[index] - int(index == selected),
+                old.severity + increments[index],
+            )
+            for index, (old, new) in enumerate(zip(before, observations, strict=True))
+        )
+        return observations, TickTrace(
+            before, disturbance, tuple(effects), transitions, observations
+        )
 
     def reset(self, command_id: str, *, expected_epoch: int) -> ResetReceipt:
         """Restore baseline once; stale commands never reset newer progress."""

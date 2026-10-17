@@ -43,3 +43,10 @@ See `specs/interview-simulator.md` for contracts and `specs/acceptance.json` for
 
 These criteria do not close Issue #17 or replace AC-101–AC-105. Cloud-authorized reset,
 physical application ACK, dashboard, debugging exercise and measured rehearsal remain future work.
+
+## Synthetic transition trace experiment
+
+AC-206–AC-208 cover recorded arithmetic/predecessor agreement, deterministic execution
+including reset and exhaustion, and accurate opt-in explanations without changing
+ordinary observations. See `specs/karma-transition-trace.md` and its additive mappings.
+These criteria establish synthetic rule execution only, not real-world inference.

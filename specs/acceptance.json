@@ -97,6 +97,36 @@
         "tests/test_grid_simulator.py::test_invalid_cli_has_no_partial_output"
       ],
       "notes": "Finite terminal rehearsal only; no dashboard or measured interview duration."
+    },
+    {
+      "id": "AC-206",
+      "spec": "specs/karma-transition-trace.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_transition_trace.py::test_trace_arithmetic_predecessors_and_saturation",
+        "tests/test_transition_trace.py::test_one_random_draw_and_no_same_tick_cascade"
+      ],
+      "notes": "Synthetic rule execution only; no real-world causal inference or cloud/device evidence."
+    },
+    {
+      "id": "AC-207",
+      "spec": "specs/karma-transition-trace.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_transition_trace.py::test_trace_matches_untraced_replay_and_reset",
+        "tests/test_transition_trace.py::test_traced_tick_limit_preserves_state_and_randomness"
+      ],
+      "notes": "Synthetic rule execution only; no real-world causal inference or cloud/device evidence."
+    },
+    {
+      "id": "AC-208",
+      "spec": "specs/karma-transition-trace.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_transition_trace.py::test_explanation_matches_recorded_progression",
+        "tests/test_transition_trace.py::test_cli_tracing_is_opt_in_and_preserves_state_output"
+      ],
+      "notes": "Synthetic rule execution only; no real-world causal inference or cloud/device evidence."
     }
   ]
 }

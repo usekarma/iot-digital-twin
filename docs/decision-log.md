@@ -102,3 +102,15 @@ mismatches without mutation. Retain per-asset ordering and permit skipped observ
 asset interleaving does not require independent sequence and tick counters. Multiple
 observations per tick would require a future explicit contract revision. This narrows
 the consumer to the current offline model without changing generated observations.
+
+## ADR-006: Explain synthetic transitions at calculation time
+
+Status: approved design, implementation proposed for review.
+
+Keep the PR #19 model and observations. Optional tracing records the actual seeded
+selection and predecessor inputs alongside the same transition calculation; one draw
+per tick drives both traced and ordinary runs. Frozen records and fixed explanatory
+templates make arithmetic auditable, including contributions clipped by severity caps.
+Avoid a second rule implementation or post-hoc cause inference. Retain no internal
+trace history; consumers choose whether to retain bounded output. This is evidence of
+a fictional model's execution, not real-world causality or a general Karma engine.
