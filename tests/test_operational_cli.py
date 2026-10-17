@@ -8,6 +8,11 @@ from business_app.operational_publisher import envelopes
 from business_app.sitewise_readback import verify
 
 
+@pytest.fixture(autouse=True)
+def mock_cli_location(monkeypatch):
+    monkeypatch.setattr(cli.shutil, "which", lambda _: "/usr/bin/aws")
+
+
 def test_dry_run_has_no_network_and_refuses_overwrite(monkeypatch, tmp_path):
     target = tmp_path / "manifest.json"
     monkeypatch.setattr("sys.argv", ["publisher", "--manifest", str(target)])
