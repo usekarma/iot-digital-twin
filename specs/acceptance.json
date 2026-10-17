@@ -195,6 +195,18 @@
         "tests/test_durable_demo.py::test_ack_after_commit_lost_ack_and_bounded_retry"
       ],
       "notes": "Test-only reference model, not DynamoDB/IoT integration proof; cloud adapters and live 60-second evidence remain pending."
+    },
+    {
+      "id": "AC-216",
+      "spec": "specs/operational-m1.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_operational_publisher.py::test_twenty_observations_preserve_model_and_unique_real_timestamps",
+        "tests/test_mqtt_tls.py::test_fragmented_connack_and_matching_qos1_ack",
+        "tests/test_operational_cli.py::test_dry_run_has_no_network_and_refuses_overwrite",
+        "tests/test_operational_cli.py::test_readback_requires_exact_good_history_and_actual_attempt"
+      ],
+      "notes": "Local MQTT/TLS boundary and readback fixtures only; no live SiteWise or latency proof."
     }
   ]
 }
