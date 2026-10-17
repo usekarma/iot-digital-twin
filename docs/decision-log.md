@@ -72,3 +72,33 @@ Use the existing `dev` desired-state path. The deployment binding remains unreso
 **Consequences:**
 
 Local documentation and configuration preparation remain reviewable without authorizing cloud mutation. Runtime packaging and infrastructure wiring have explicit owners. This decision adds no live device/AWS evidence and changes no telemetry acceptance criteria.
+
+## ADR-005: Begin the interview milestone with a bounded offline simulator
+
+**Status:** prototype proposal for review.
+
+**Context:** Issue #17 needs a reliable one-minute narrative before cloud and hardware
+integration. The Core2 contract remains a separate experiment.
+
+**Decision:** Use standard-library Python with a fixed-seed five-asset directed ring,
+monotonic severity and simultaneous pre-tick neighbor propagation. Restore the seeded
+interview baseline on reset, advance epoch and reset per-asset counters. A separate
+in-memory consumer enforces per-asset replay and epoch rejection. Retain only the last
+reset receipt; older duplicates fail closed rather than requiring unbounded history.
+Use additive AC-201–AC-205 mappings to the issue's INT criteria, preserving the existing
+AC-only traceability gate. No new dependencies, cloud services or security gate changes.
+
+**Consequences:** The terminal progression can be rehearsed offline. Ring hazards are
+a fictional teaching model and saturate at CRITICAL; this is not a validated grid
+model. Idempotency and epochs are process-local; durable multi-producer state, cloud
+authorization and device application ACK need separately reviewed contracts.
+
+### ADR-005 clarification: sequence equals tick for this producer
+
+PR #19 review identified that the consumer admitted independently advancing sequences
+and ticks even though the producer emits exactly one observation per asset per tick.
+Enforce `sequence == tick` within the active epoch at the consumer boundary, rejecting
+mismatches without mutation. Retain per-asset ordering and permit skipped observations;
+asset interleaving does not require independent sequence and tick counters. Multiple
+observations per tick would require a future explicit contract revision. This narrows
+the consumer to the current offline model without changing generated observations.

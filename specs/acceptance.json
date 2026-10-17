@@ -45,6 +45,58 @@
         "tests/test_digital_twin_contract.py::test_repo_contains_no_committed_credentials"
       ],
       "notes": "Repository secret scanning proves local repository hygiene only."
+    },
+    {
+      "id": "AC-201",
+      "spec": "specs/interview-simulator.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_grid_simulator.py::test_seeded_replay_and_reset_replay"
+      ],
+      "notes": "INT-01: local deterministic replay only."
+    },
+    {
+      "id": "AC-202",
+      "spec": "specs/interview-simulator.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_grid_simulator.py::test_faults_persist_accumulate_and_affect_neighbor",
+        "tests/test_grid_simulator.py::test_neighbor_effect_uses_pre_tick_state"
+      ],
+      "notes": "INT-02: synthetic ring degradation, not electrical simulation validation."
+    },
+    {
+      "id": "AC-203",
+      "spec": "specs/interview-simulator.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_grid_simulator.py::test_reset_is_complete_and_duplicate_does_not_erase_progress",
+        "tests/test_grid_simulator.py::test_invalid_reset_never_mutates",
+        "tests/test_grid_simulator.py::test_wrong_reset_epoch_and_tick_limit_fail_without_mutation"
+      ],
+      "notes": "Local part of INT-03; no authenticated cloud reset or device application ACK."
+    },
+    {
+      "id": "AC-204",
+      "spec": "specs/interview-simulator.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_grid_simulator.py::test_interleaved_assets_replay_and_epoch_isolation",
+        "tests/test_grid_simulator.py::test_event_validation",
+        "tests/test_grid_simulator.py::test_consumer_rejects_sequence_tick_mismatch_without_mutation",
+        "tests/test_grid_simulator.py::test_consumer_accepts_skipped_ticks_and_independent_assets"
+      ],
+      "notes": "Foundation for INT-09; intentional faulty rehearsal adapter is deferred."
+    },
+    {
+      "id": "AC-205",
+      "spec": "specs/interview-simulator.md",
+      "evidence_type": "local-contract",
+      "tests": [
+        "tests/test_grid_simulator.py::test_offline_terminal_rehearsal",
+        "tests/test_grid_simulator.py::test_invalid_cli_has_no_partial_output"
+      ],
+      "notes": "Finite terminal rehearsal only; no dashboard or measured interview duration."
     }
   ]
 }

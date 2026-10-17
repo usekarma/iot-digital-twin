@@ -30,3 +30,16 @@ This project follows the repository engineering gates: format, lint, strict type
 - Automatic remediation or broad operational rollout
 
 These items remain future work after the first end-to-end proof is demonstrated to a stakeholder.
+
+## Offline interview simulator — separate local criteria
+
+See `specs/interview-simulator.md` for contracts and `specs/acceptance.json` for tests.
+
+- AC-201 (INT-01): repeatable seeded history and replay after reset.
+- AC-202 (INT-02): persistent accumulating faults and reproducible neighbor effects.
+- AC-203 (local part of INT-03): idempotent reset to baseline, epoch isolation, bounded state.
+- AC-204 (foundation for INT-09): per-asset sequence tracking and invalid-state rejection.
+- AC-205: finite offline terminal rehearsal with explicit synthetic/local labels.
+
+These criteria do not close Issue #17 or replace AC-101–AC-105. Cloud-authorized reset,
+physical application ACK, dashboard, debugging exercise and measured rehearsal remain future work.
