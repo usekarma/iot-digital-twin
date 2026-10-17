@@ -126,3 +126,15 @@ Exact epoch/tick preconditions reject duplicate/stale steps; receipt deduplicati
 preserves reset behavior. Loopback/same-origin/token/body bounds limit the HTTP boundary.
 No frontend framework, dependency, external asset or new modeling abstraction.
 Cloud/ATOM control and the debugging exercise stay subsequent milestones.
+
+## ADR-008: Specify durable demo reset before cloud implementation
+
+Status: planning baseline approved; adapter implementation and release pending.
+
+Persist a bounded replay cursor and pinned model version, not RNG/pickle state.
+Use session/epoch/revision/lease fences for conditional ticks. Reset transaction
+commits baseline and command receipt together; receipt is a bounded ACK outbox.
+Retries can redeliver the receipt but never repeat a reset. Deadline, command and
+publish-attempt caps bound the experiment. Local reference tests model race/recovery
+behavior without moving SDK/runtime code out of aws-lambda or IaC out of aws-iac.
+See specs/durable-demo.md and docs/aws-demo-deployment-plan.md. No cloud change authorized.

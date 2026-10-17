@@ -214,3 +214,12 @@ Bundled HTML/CSS/JS renders observations, the latest actual transition trace and
 12-snapshot severity history. Step/Play use the same Python rules; Reset reuses
 the existing receipt contract. No new modeling layer, cloud service or device adapter.
 See `docs/offline-dashboard-runbook.md` for launch and review boundaries.
+
+## Durable AWS interview planning boundary
+
+Phase 2 defines DynamoDB-backed session state, fenced runner updates and atomic
+reset/receipt commits in `specs/durable-demo.md`. The existing simulator/trace rules
+are reused through bounded replay. Test-only reference storage exercises interleavings;
+it does not implement DynamoDB. aws-lambda owns the future adapters, aws-config the
+desired inputs and aws-iac the infrastructure. Deployment inventory/IAM/teardown are
+in `docs/aws-demo-deployment-plan.md`; AWS/device observations remain pending.

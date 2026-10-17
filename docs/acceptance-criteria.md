@@ -57,3 +57,10 @@ AC-209–AC-211 cover deterministic dashboard projection/bounded history, local
 reset/stale-command behavior, and the loopback-only bundled-asset HTTP boundary.
 See `specs/offline-dashboard.md`. This contributes to local INT-05 rehearsal;
 a measured 60-second run, recording and cloud/physical completion remain pending.
+
+## Durable cloud contract reference tests
+
+AC-212–AC-215 cover controlled tick/reset/fence races, replay recovery and bounds,
+reset deduplication/session rejection, and committed-receipt ACK retry behavior.
+These use a test-only reference model, not actual DynamoDB or MQTT. They do not
+close the live INT-03/04/05 acceptance goal. See `specs/durable-demo.md`.
