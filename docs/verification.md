@@ -1073,3 +1073,36 @@ rehearsal and matched byte-for-byte, SHA-256
 The simulator retains no trace history. CLI/domain bounds and observation format remain
 unchanged. Independent CI and human review remain pending. No AWS, MQTT or physical-device
 operation was performed; this is synthetic execution evidence, not real-world inference.
+
+## Issue #17 Phase 2: durable behavior planning/reference tests
+
+Base: `9619153`, merged PR #20; PR #21 remains separate. Branch
+`plan/durable-demo-contract`. Specifications and a test-only reference store model
+conditional tick/reset interleavings, lease fencing, revision conflict, deterministic
+restart/relabeling of existing trace records, command deduplication/session rejection,
+atomic reset/receipt failure and three-attempt ACK redelivery. No AWS SDK/runtime
+adapter, Terraform, device code or existing simulator rule was changed.
+
+Executed `PYTHONPATH=src .venv/bin/python -m pytest tests/test_durable_demo.py`: exit 0,
+five reference behavior tests passed. Full clean-snapshot verification at
+`/tmp/iot-durable-kDrkBD/checkout` using the existing Python 3.12.3/locked environment:
+`PYTHONPATH=src /home/ted/dev/iot-digital-twin/.venv/bin/python scripts/check.py`, exit 0.
+96 tests passed, 96.71% existing business-app coverage, credential/spec scan, Ruff,
+strict mypy, Bandit and dependency audit passed; no known vulnerabilities. Full output
+`/tmp/iot-durable-kDrkBD/check.log`; ignored reports in that snapshot's artifacts/.
+Coverage does not measure the test-only fake as deployed runtime behavior.
+
+The reference store is shared memory across Worker instances, not durable storage
+across a real process crash. It exercises controlled schedules, not threads or actual
+DynamoDB atomicity/serialization. ACK tests simulate delivery loss/budgets; actual
+outbox claim expiry, SDK/network faults, identity enforcement, session/input parsing,
+item-size enforcement, clock skew and device LED must be verified in owner-repository
+adapters and separately approved live experiments. Do not infer integration coverage.
+AC-212–AC-215 are local contract evidence only; INT-03/04/05 live completion remains pending.
+
+Deployment proposal lists names, IAM, bounds, cost inputs, rollback and teardown in
+`docs/aws-demo-deployment-plan.md`. Target region/account/principal/artifact remain
+unresolved; pricing envelope is not a complete approved deployment cost estimate.
+The original ignored public mbedTLS fixture artifact is preserved and still has its
+previously documented scanner limitation; no scanner exception was added.
+No AWS resources, credentials/policies, MQTT messages or hardware were modified.

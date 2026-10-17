@@ -50,3 +50,10 @@ AC-206–AC-208 cover recorded arithmetic/predecessor agreement, deterministic e
 including reset and exhaustion, and accurate opt-in explanations without changing
 ordinary observations. See `specs/karma-transition-trace.md` and its additive mappings.
 These criteria establish synthetic rule execution only, not real-world inference.
+
+## Durable cloud contract reference tests
+
+AC-212–AC-215 cover controlled tick/reset/fence races, replay recovery and bounds,
+reset deduplication/session rejection, and committed-receipt ACK retry behavior.
+These use a test-only reference model, not actual DynamoDB or MQTT. They do not
+close the live INT-03/04/05 acceptance goal. See `specs/durable-demo.md`.

@@ -114,3 +114,15 @@ templates make arithmetic auditable, including contributions clipped by severity
 Avoid a second rule implementation or post-hoc cause inference. Retain no internal
 trace history; consumers choose whether to retain bounded output. This is evidence of
 a fictional model's execution, not real-world causality or a general Karma engine.
+
+## ADR-008: Specify durable demo reset before cloud implementation
+
+Status: planning baseline approved; adapter implementation and release pending.
+
+Persist a bounded replay cursor and pinned model version, not RNG/pickle state.
+Use session/epoch/revision/lease fences for conditional ticks. Reset transaction
+commits baseline and command receipt together; receipt is a bounded ACK outbox.
+Retries can redeliver the receipt but never repeat a reset. Deadline, command and
+publish-attempt caps bound the experiment. Local reference tests model race/recovery
+behavior without moving SDK/runtime code out of aws-lambda or IaC out of aws-iac.
+See specs/durable-demo.md and docs/aws-demo-deployment-plan.md. No cloud change authorized.
