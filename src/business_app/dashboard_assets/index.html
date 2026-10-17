@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IoT · Offline demonstration</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body><main>
+<header><div><p class="eyebrow">IOT EXPERIMENT / ISSUE 17</p><h1>Watch a fault travel.</h1><p class="subtitle">Five connected assets. One visible chain of consequences.</p></div><span class="badge">Synthetic · Offline</span></header>
+<section class="toolbar" aria-label="Simulation controls"><div class="buttons"><button id="step">Step</button><button id="play" class="primary">Play</button><button id="reset">Reset baseline</button></div><span id="clock">Loading local state…</span></section>
+<p id="status" role="status">Loading…</p>
+<section class="totals" aria-label="Asset health totals"><div class="healthy"><span>HEALTHY</span><strong id="healthy">—</strong></div><div class="warning"><span>WARNING</span><strong id="warning">—</strong></div><div class="critical"><span>CRITICAL</span><strong id="critical">—</strong></div></section>
+<section class="workspace"><div class="panel network"><div class="panel-heading"><h2>Connected assets</h2><span>Directed ring</span></div><p class="hint">Select an asset. Highlighted arrows show the latest propagated effects.</p><svg id="network" viewBox="0 0 600 410" role="group" aria-label="Five connected synthetic assets"></svg><div class="legend"><span>● Healthy</span><span>● Warning</span><span>● Critical</span></div></div>
+<aside class="panel explanation"><p class="eyebrow">WHY DID IT CHANGE?</p><h2 id="selected">Asset 001</h2><div id="condition" class="condition">HEALTHY</div><p id="explanation">Loading…</p><p class="note">Recorded rules and inputs from the previous tick. This is synthetic model execution, not real-world causal inference.</p></aside></section>
+<section class="panel timeline"><div class="panel-heading"><h2>Deterioration over time</h2><span>Most recent 12 snapshots</span></div><div class="table-scroll"><table id="history" aria-label="Recent asset severity by simulation tick"></table></div><p class="hint">Each tick represents 60 simulated seconds. Reset starts a new epoch and restores the known interview baseline.</p></section>
+<footer>Local reset only · No cloud connection or physical device control · Play pauses at tick 6</footer>
+</main></body></html>

@@ -50,3 +50,10 @@ AC-206–AC-208 cover recorded arithmetic/predecessor agreement, deterministic e
 including reset and exhaustion, and accurate opt-in explanations without changing
 ordinary observations. See `specs/karma-transition-trace.md` and its additive mappings.
 These criteria establish synthetic rule execution only, not real-world inference.
+
+## Offline visible demonstration
+
+AC-209–AC-211 cover deterministic dashboard projection/bounded history, local
+reset/stale-command behavior, and the loopback-only bundled-asset HTTP boundary.
+See `specs/offline-dashboard.md`. This contributes to local INT-05 rehearsal;
+a measured 60-second run, recording and cloud/physical completion remain pending.

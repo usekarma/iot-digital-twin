@@ -206,3 +206,11 @@ transitions during the same simulator calculation. `step_traced()` returns immut
 records; `step()` and ordinary CLI output retain their existing contracts. No trace
 history is stored internally. See `specs/karma-transition-trace.md`; this adds no
 external service or general-purpose causal engine.
+
+## Local dashboard for Issue #17
+
+A standard-library loopback HTTPServer owns one simulator/current-state session.
+Bundled HTML/CSS/JS renders observations, the latest actual transition trace and a
+12-snapshot severity history. Step/Play use the same Python rules; Reset reuses
+the existing receipt contract. No new modeling layer, cloud service or device adapter.
+See `docs/offline-dashboard-runbook.md` for launch and review boundaries.
