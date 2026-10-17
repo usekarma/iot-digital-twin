@@ -138,3 +138,12 @@ Retries can redeliver the receipt but never repeat a reset. Deadline, command an
 publish-attempt caps bound the experiment. Local reference tests model race/recovery
 behavior without moving SDK/runtime code out of aws-lambda or IaC out of aws-iac.
 See specs/durable-demo.md and docs/aws-demo-deployment-plan.md. No cloud change authorized.
+
+## Proposed M1: bounded local producer and provider-supported SiteWise wiring
+
+The operational-history requirement justifies a separate local MQTT experiment.
+Keep simulator rules and observations unchanged; add a 20-message standard-library
+mTLS/QoS1 adapter with explicit live guard and independent TQV readback. The pinned
+AWS provider lacks native SiteWise resources/action, so Terraform owns a small
+CloudFormation stack rather than imperative provisioning. Human review and live
+ownership/latency evidence remain required; no physical reset/ACK completion implied.
